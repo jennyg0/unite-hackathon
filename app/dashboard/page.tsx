@@ -21,6 +21,8 @@ import { TokenSwap } from "@/components/TokenSwap";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { StatsCard, ActionCard } from "@/components/MobileCard";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
+import { FloatingActionButton } from "@/components/FloatingActionButton";
+import { PortfolioEmptyState } from "@/components/EmptyState";
 import { usePrivy } from "@privy-io/react-auth";
 import { useOnboarding } from "@/components/OnboardingProvider";
 
@@ -95,6 +97,25 @@ export default function DashboardPage() {
     );
   }
 
+  const handleFloatingAction = (action: string) => {
+    switch (action) {
+      case "calculator":
+        setActiveTab("calculator");
+        break;
+      case "swap":
+        setActiveTab("swap");
+        break;
+      case "deposit":
+        // TODO: Implement deposit functionality
+        console.log("Deposit action triggered");
+        break;
+      case "goals":
+        // TODO: Implement goals update
+        console.log("Goals action triggered");
+        break;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -134,6 +155,9 @@ export default function DashboardPage() {
           {activeTab === "learn" && <LearnTab />}
         </motion.div>
       </main>
+
+      {/* Floating Action Button */}
+      <FloatingActionButton onAction={handleFloatingAction} />
     </div>
   );
 }
@@ -231,19 +255,12 @@ function PortfolioTab() {
         </p>
       </div>
 
-      <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Portfolio Overview
-        </h3>
-        <div className="text-center text-gray-500 py-12">
-          <PiggyBank className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-          <p className="text-lg mb-2">No investments yet</p>
-          <p className="text-sm">
-            Start building your portfolio by swapping tokens or setting up
-            savings goals
-          </p>
-        </div>
-      </div>
+      <PortfolioEmptyState
+        onAction={() => {
+          // TODO: Implement deposit functionality
+          console.log("Portfolio deposit action");
+        }}
+      />
     </div>
   );
 }
