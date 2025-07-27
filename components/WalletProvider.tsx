@@ -1,9 +1,7 @@
 "use client";
 
-import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
-import { WagmiConfig } from "wagmi";
-import { wagmiConfig, chains } from "@/lib/wagmi";
-import "@rainbow-me/rainbowkit/styles.css";
+import { PrivyProvider } from "@privy-io/react-auth";
+import { privyConfig } from "@/lib/privy";
 
 interface WalletProviderProps {
   children: React.ReactNode;
@@ -11,14 +9,8 @@ interface WalletProviderProps {
 
 export function WalletProvider({ children }: WalletProviderProps) {
   return (
-    <WagmiConfig config={wagmiConfig}>
-      <RainbowKitProvider
-        chains={chains}
-        locale="en-US"
-        showRecentTransactions={true}
-      >
-        {children}
-      </RainbowKitProvider>
-    </WagmiConfig>
+    <PrivyProvider appId={privyConfig.appId} config={privyConfig.config}>
+      {children}
+    </PrivyProvider>
   );
 }

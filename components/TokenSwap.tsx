@@ -8,7 +8,7 @@ import {
   AlertCircle,
   CheckCircle,
 } from "lucide-react";
-import { useAccount, useNetwork, useSwitchNetwork } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
 import { oneInchAPIBase, oneInchAPIMainnet } from "@/lib/1inch";
 import { TokenInfo, QuoteResponse } from "@/types/1inch";
 
@@ -71,9 +71,9 @@ const COMMON_TOKENS = {
 };
 
 export function TokenSwap() {
-  const { address, isConnected } = useAccount();
-  const { chain } = useNetwork();
-  const { switchNetwork } = useSwitchNetwork();
+  const { user, authenticated } = usePrivy();
+  const address = user?.wallet?.address;
+  const chain = { id: 8453 }; // Default to Base for now
 
   const [fromToken, setFromToken] = useState<TokenInfo | null>(null);
   const [toToken, setToToken] = useState<TokenInfo | null>(null);
@@ -170,7 +170,7 @@ export function TokenSwap() {
     }
   }, [fromToken, toToken, amount, address]);
 
-  if (!isConnected) {
+  if (!authenticated) {
     return (
       <div className="card text-center py-12">
         <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -216,12 +216,7 @@ export function TokenSwap() {
             <p className="text-yellow-700 text-sm mt-1">
               Please switch to Base or Ethereum mainnet for swapping
             </p>
-            <button
-              onClick={() => switchNetwork?.(8453)}
-              className="btn-primary mt-2"
-            >
-              Switch to Base
-            </button>
+            <button className="btn-primary mt-2">Switch to Base</button>
           </div>
         )}
 

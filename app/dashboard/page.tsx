@@ -18,12 +18,12 @@ import {
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { FinancialFreedomCalculator } from "@/components/FinancialFreedomCalculator";
 import { TokenSwap } from "@/components/TokenSwap";
-import { useAccount } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
 
 type TabType = "overview" | "calculator" | "swap" | "portfolio" | "learn";
 
 export default function DashboardPage() {
-  const { isConnected } = useAccount();
+  const { authenticated } = usePrivy();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 
   const tabs = [
@@ -34,7 +34,7 @@ export default function DashboardPage() {
     { id: "learn", label: "Learn", icon: BookOpen },
   ];
 
-  if (!isConnected) {
+  if (!authenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <header className="relative z-10">
