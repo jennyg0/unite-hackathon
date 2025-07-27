@@ -1,0 +1,265 @@
+"use client";
+
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { 
+  getOneInchAPI, 
+  getCommonTokens, 
+  getTokenPriceUSD, 
+  getWalletTotalValue,
+  TokenInfo, 
+  PriceData, 
+  WalletBalance, 
+  GasPrice,
+  QuoteResponse 
+} from '@/lib/1inch-api';
+
+interface Use1inchDataOptions {
+  chainId?: number;
+  autoRefresh?: boolean;
+  refreshInterval?: number;
+}
+
+export function use1inchData(options: Use1inchDataOptions = {}) {
+  const { 
+    chainId = 137, 
+    autoRefresh = true, 
+    refreshInterval = 30000 // 30 seconds
+  } = options;
+
+  // State for different data types
+  const [tokens, setTokens] = useState<TokenInfo[]>([]);
+  const [commonTokens, setCommonTokens] = useState<TokenInfo[]>([]);
+  const [prices, setPrices] = useState<Record<string, PriceData>>({});
+  const [walletBalances, setWalletBalances] = useState<WalletBalance[]>([]);
+  const [gasPrice, setGasPrice] = useState<GasPrice | null>(null);
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState<Record<string, string>>({});
+
+  // API instance
+  const api = useMemo(() => getOneInchAPI(chainId), [chainId]);
+
+  // Loading state helpers
+  const setLoadingState = useCallback((key: string, isLoading: boolean) => {
+    setLoading(prev => ({ ...prev, [key]: isLoading }));
+  }, []);
+
+  const setErrorState = useCallback((key: string, errorMessage: string) => {
+    setError(prev => ({ ...prev, [key]: errorMessage }));
+  }, []);
+
+  // Fetch all supported tokens
+  const fetchTokens = useCallback(async () => {
+    setLoadingState('tokens', true);
+    setErrorState('tokens', '');
+    
+    try {
+      const allTokens = await api.getTokens();
+      setTokens(allTokens);
+      
+      // Also fetch common tokens
+      const common = await getCommonTokens(chainId);
+      setCommonTokens(common);
+    } catch (err) {
+      setErrorState('tokens', err instanceof Error ? err.message : 'Failed to fetch tokens');
+    } finally {
+      setLoadingState('tokens', false);
+    }
+  }, [api, chainId, setLoadingState, setErrorState]);
+
+  // Fetch token prices
+  const fetchTokenPrices = useCallback(async (tokenAddresses: string[]) => {
+    if (tokenAddresses.length === 0) return;
+    
+    setLoadingState('prices', true);
+    setErrorState('prices', '');
+    
+    try {
+      const priceData = await api.getTokenPrices(tokenAddresses);
+      const priceMap = priceData.reduce((acc, price) => {
+        acc[price.token] = price;
+        return acc;
+      }, {} as Record<string, PriceData>);
+      
+      setPrices(prev => ({ ...prev, ...priceMap }));
+    } catch (err) {
+      setErrorState('prices', err instanceof Error ? err.message : 'Failed to fetch prices');
+    } finally {
+      setLoadingState('prices', false);
+    }
+  }, [api, setLoadingState, setErrorState]);
+
+  // Fetch single token price
+  const fetchTokenPrice = useCallback(async (tokenAddress: string) => {
+    setLoadingState(`price-${tokenAddress}`, true);
+    setErrorState(`price-${tokenAddress}`, '');
+    
+    try {
+      const priceData = await api.getTokenPrice(tokenAddress);
+      if (priceData) {
+        setPrices(prev => ({ ...prev, [tokenAddress]: priceData }));
+      }
+    } catch (err) {
+      setErrorState(`price-${tokenAddress}`, err instanceof Error ? err.message : 'Failed to fetch price');
+    } finally {
+      setLoadingState(`price-${tokenAddress}`, false);
+    }
+  }, [api, setLoadingState, setErrorState]);
+
+  // Fetch wallet balances
+  const fetchWalletBalances = useCallback(async (walletAddress: string) => {
+    if (!walletAddress) return;
+    
+    setLoadingState('balances', true);
+    setErrorState('balances', '');
+    
+    try {
+      const balances = await api.getWalletBalances(walletAddress);
+      setWalletBalances(balances);
+      
+      // Also fetch prices for tokens with balances
+      const tokenAddresses = balances.map(b => b.token.address);
+      if (tokenAddresses.length > 0) {
+        await fetchTokenPrices(tokenAddresses);
+      }
+    } catch (err) {
+      setErrorState('balances', err instanceof Error ? err.message : 'Failed to fetch balances');
+    } finally {
+      setLoadingState('balances', false);
+    }
+  }, [api, fetchTokenPrices, setLoadingState, setErrorState]);
+
+  // Fetch gas price
+  const fetchGasPrice = useCallback(async () => {
+    setLoadingState('gas', true);
+    setErrorState('gas', '');
+    
+    try {
+      const gasData = await api.getGasPrice();
+      setGasPrice(gasData);
+    } catch (err) {
+      setErrorState('gas', err instanceof Error ? err.message : 'Failed to fetch gas price');
+    } finally {
+      setLoadingState('gas', false);
+    }
+  }, [api, setLoadingState, setErrorState]);
+
+  // Get swap quote
+  const getQuote = useCallback(async (
+    fromTokenAddress: string,
+    toTokenAddress: string,
+    amount: string,
+    walletAddress?: string
+  ): Promise<QuoteResponse | null> => {
+    setLoadingState('quote', true);
+    setErrorState('quote', '');
+    
+    try {
+      const quote = await api.getQuote(fromTokenAddress, toTokenAddress, amount, walletAddress);
+      return quote;
+    } catch (err) {
+      setErrorState('quote', err instanceof Error ? err.message : 'Failed to get quote');
+      return null;
+    } finally {
+      setLoadingState('quote', false);
+    }
+  }, [api, setLoadingState, setErrorState]);
+
+  // Get token metadata
+  const getTokenMetadata = useCallback(async (tokenAddress: string): Promise<TokenInfo | null> => {
+    setLoadingState(`metadata-${tokenAddress}`, true);
+    setErrorState(`metadata-${tokenAddress}`, '');
+    
+    try {
+      const metadata = await api.getTokenMetadata(tokenAddress);
+      return metadata;
+    } catch (err) {
+      setErrorState(`metadata-${tokenAddress}`, err instanceof Error ? err.message : 'Failed to fetch metadata');
+      return null;
+    } finally {
+      setLoadingState(`metadata-${tokenAddress}`, false);
+    }
+  }, [api, setLoadingState, setErrorState]);
+
+  // Get price chart data
+  const getPriceChart = useCallback(async (tokenAddress: string, days: number = 30) => {
+    setLoadingState(`chart-${tokenAddress}`, true);
+    setErrorState(`chart-${tokenAddress}`, '');
+    
+    try {
+      const chartData = await api.getPriceChart(tokenAddress, days);
+      return chartData;
+    } catch (err) {
+      setErrorState(`chart-${tokenAddress}`, err instanceof Error ? err.message : 'Failed to fetch chart data');
+      return [];
+    } finally {
+      setLoadingState(`chart-${tokenAddress}`, false);
+    }
+  }, [api, setLoadingState, setErrorState]);
+
+  // Auto-refresh effect
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      // Refresh prices and gas price
+      if (Object.keys(prices).length > 0) {
+        fetchTokenPrices(Object.keys(prices));
+      }
+      fetchGasPrice();
+    }, refreshInterval);
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, refreshInterval, prices, fetchTokenPrices, fetchGasPrice]);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchTokens();
+    fetchGasPrice();
+  }, [fetchTokens, fetchGasPrice]);
+
+  // Computed values
+  const totalWalletValue = useMemo(() => {
+    return walletBalances.reduce((total, balance) => total + balance.balanceUsd, 0);
+  }, [walletBalances]);
+
+  const isLoading = useMemo(() => {
+    return Object.values(loading).some(Boolean);
+  }, [loading]);
+
+  const hasError = useMemo(() => {
+    return Object.keys(error).length > 0;
+  }, [error]);
+
+  return {
+    // Data
+    tokens,
+    commonTokens,
+    prices,
+    walletBalances,
+    gasPrice,
+    totalWalletValue,
+    
+    // Loading states
+    loading,
+    isLoading,
+    
+    // Error states
+    error,
+    hasError,
+    
+    // Actions
+    fetchTokens,
+    fetchTokenPrices,
+    fetchTokenPrice,
+    fetchWalletBalances,
+    fetchGasPrice,
+    getQuote,
+    getTokenMetadata,
+    getPriceChart,
+    
+    // Utilities
+    getTokenPrice: (tokenAddress: string) => prices[tokenAddress]?.price || 0,
+    getTokenBalance: (tokenAddress: string) => 
+      walletBalances.find(b => b.token.address.toLowerCase() === tokenAddress.toLowerCase()),
+  };
+} 
