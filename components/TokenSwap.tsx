@@ -9,11 +9,43 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
-import { oneInchAPIBase, oneInchAPIMainnet } from "@/lib/1inch";
-import { TokenInfo, QuoteResponse } from "@/types/1inch";
+import { getOneInchAPI } from "@/lib/1inch-api";
+import { TokenInfo, QuoteResponse } from "@/lib/1inch-api";
+import { parseUnits } from "viem";
+import { useWalletClient, usePublicClient } from "wagmi";
 
 // Common token addresses for mainnets
 const COMMON_TOKENS = {
+  // Polygon mainnet
+  137: {
+    MATIC: {
+      address: "0x0000000000000000000000000000000000000000",
+      symbol: "MATIC",
+      name: "Polygon",
+      decimals: 18,
+      logoURI: "",
+      tags: [],
+      chainId: 137,
+    },
+    USDC: {
+      address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+      symbol: "USDC",
+      name: "USD Coin",
+      decimals: 6,
+      logoURI: "",
+      tags: [],
+      chainId: 137,
+    },
+    WETH: {
+      address: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619",
+      symbol: "WETH",
+      name: "Wrapped Ether",
+      decimals: 18,
+      logoURI: "",
+      tags: [],
+      chainId: 137,
+    },
+  },
   // Base mainnet
   8453: {
     ETH: {
@@ -23,6 +55,7 @@ const COMMON_TOKENS = {
       decimals: 18,
       logoURI: "",
       tags: [],
+      chainId: 8453,
     },
     USDC: {
       address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
@@ -97,15 +130,8 @@ export function TokenSwap() {
 
   // Get the appropriate API instance based on chain
   const getAPIInstance = () => {
-    if (!chain) return oneInchAPIBase;
-    switch (chain.id) {
-      case 8453: // Base mainnet
-        return oneInchAPIBase;
-      case 1: // Ethereum mainnet
-        return oneInchAPIMainnet;
-      default:
-        return oneInchAPIBase;
-    }
+    const chainId = chain?.id || 137; // Default to Polygon
+    return getOneInchAPI(chainId);
   };
 
   // Get available tokens for current chain

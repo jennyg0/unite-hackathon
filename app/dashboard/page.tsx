@@ -17,16 +17,30 @@ import {
 } from "lucide-react";
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { FinancialFreedomCalculator } from "@/components/FinancialFreedomCalculator";
-import { TokenSwap } from "@/components/TokenSwap";
+import TokenSwapV2 from "@/components/TokenSwapV2";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { StatsCard, ActionCard } from "@/components/MobileCard";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { PortfolioEmptyState } from "@/components/EmptyState";
+import { WalletBalance } from "@/components/WalletBalance";
+import { PriceFeed } from "@/components/PriceFeed";
+import { MiniWalletBalance } from "@/components/WalletBalance";
+import { MiniPriceFeed } from "@/components/PriceFeed";
+import { NFTMilestones } from "@/components/NFTMilestones";
+import { TokenChart } from "@/components/TokenChart";
+import { APITest } from "@/components/APITest";
 import { usePrivy } from "@privy-io/react-auth";
 import { useOnboarding } from "@/components/OnboardingProvider";
 
-type TabType = "overview" | "calculator" | "swap" | "portfolio" | "learn";
+type TabType =
+  | "overview"
+  | "calculator"
+  | "swap"
+  | "portfolio"
+  | "learn"
+  | "achievements"
+  | "test";
 
 export default function DashboardPage() {
   const { authenticated, ready } = usePrivy();
@@ -113,6 +127,9 @@ export default function DashboardPage() {
         // TODO: Implement goals update
         console.log("Goals action triggered");
         break;
+      case "achievements":
+        setActiveTab("achievements");
+        break;
     }
   };
 
@@ -150,9 +167,11 @@ export default function DashboardPage() {
             <OverviewTab onTabChange={setActiveTab} />
           )}
           {activeTab === "calculator" && <FinancialFreedomCalculator />}
-          {activeTab === "swap" && <TokenSwap />}
+          {activeTab === "swap" && <TokenSwapV2 />}
           {activeTab === "portfolio" && <PortfolioTab />}
           {activeTab === "learn" && <LearnTab />}
+          {activeTab === "achievements" && <AchievementsTab />}
+          {activeTab === "test" && <APITest />}
         </motion.div>
       </main>
 
@@ -255,12 +274,64 @@ function PortfolioTab() {
         </p>
       </div>
 
-      <PortfolioEmptyState
-        onAction={() => {
-          // TODO: Implement deposit functionality
-          console.log("Portfolio deposit action");
-        }}
-      />
+      {/* Wallet Balance */}
+      <WalletBalance />
+
+      {/* Price Feed for Common Tokens */}
+      <div className="card">
+        <PriceFeed
+          tokens={[
+            {
+              address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
+              symbol: "USDC",
+              name: "USD Coin",
+              decimals: 6,
+              logoURI: "",
+              tags: [],
+              chainId: 8453,
+            },
+            {
+              address: "0x4200000000000000000000000000000000000006", // WETH on Base
+              symbol: "WETH",
+              name: "Wrapped Ether",
+              decimals: 18,
+              logoURI: "",
+              tags: [],
+              chainId: 8453,
+            },
+          ]}
+          showChanges={true}
+          autoRefresh={true}
+        />
+      </div>
+
+      {/* Token Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TokenChart
+          token={{
+            address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
+            symbol: "USDC",
+            name: "USD Coin",
+            decimals: 6,
+            logoURI: "",
+            tags: [],
+            chainId: 8453,
+          }}
+          days={30}
+        />
+        <TokenChart
+          token={{
+            address: "0x4200000000000000000000000000000000000006", // WETH on Base
+            symbol: "WETH",
+            name: "Wrapped Ether",
+            decimals: 18,
+            logoURI: "",
+            tags: [],
+            chainId: 8453,
+          }}
+          days={30}
+        />
+      </div>
     </div>
   );
 }
@@ -318,6 +389,21 @@ function LearnTab() {
           <button className="btn-primary">Explore</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function AchievementsTab() {
+  return (
+    <div className="space-y-8">
+      <div className="text-center">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Achievements & NFTs
+        </h1>
+        <p className="text-gray-600">Track your progress and unlock rewards</p>
+      </div>
+
+      <NFTMilestones />
     </div>
   );
 }

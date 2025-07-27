@@ -8,11 +8,20 @@ import {
   TrendingUp,
   PiggyBank,
   BookOpen,
+  Trophy,
+  TestTube,
   Menu,
   X,
 } from "lucide-react";
 
-type TabType = "overview" | "calculator" | "swap" | "portfolio" | "learn";
+type TabType =
+  | "overview"
+  | "calculator"
+  | "swap"
+  | "portfolio"
+  | "learn"
+  | "achievements"
+  | "test";
 
 interface MobileNavigationProps {
   activeTab: TabType;
@@ -31,6 +40,8 @@ export function MobileNavigation({
     { id: "swap", label: "Swap", icon: TrendingUp },
     { id: "portfolio", label: "Portfolio", icon: PiggyBank },
     { id: "learn", label: "Learn", icon: BookOpen },
+    { id: "achievements", label: "Achievements", icon: Trophy },
+    { id: "test", label: "API Test", icon: TestTube },
   ];
 
   return (
