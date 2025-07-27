@@ -71,9 +71,21 @@ const COMMON_TOKENS = {
 };
 
 export function TokenSwap() {
-  const { user, authenticated } = usePrivy();
+  const { user, authenticated, ready } = usePrivy();
   const address = user?.wallet?.address;
   const chain = { id: 8453 }; // Default to Base for now
+
+  // Wait for Privy to be ready
+  if (!ready) {
+    return (
+      <div className="card text-center py-12">
+        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <ArrowDownUp className="w-6 h-6 text-blue-600 animate-pulse" />
+        </div>
+        <p className="text-gray-600">Loading swap interface...</p>
+      </div>
+    );
+  }
 
   const [fromToken, setFromToken] = useState<TokenInfo | null>(null);
   const [toToken, setToToken] = useState<TokenInfo | null>(null);
