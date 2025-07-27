@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useOnboarding } from "./OnboardingProvider";
 import { OnboardingWelcome } from "./onboarding/OnboardingWelcome";
+import OnboardingENS from "./onboarding/OnboardingENS";
 import { OnboardingCalculator } from "./onboarding/OnboardingCalculator";
 import { OnboardingGoals } from "./onboarding/OnboardingGoals";
 import { OnboardingStrategy } from "./onboarding/OnboardingStrategy";
@@ -18,6 +19,10 @@ export function OnboardingFlow() {
       case "welcome":
         return (
           <OnboardingWelcome onNext={goToNextStep} onSkip={skipOnboarding} />
+        );
+      case "ens":
+        return (
+          <OnboardingENS onNext={goToNextStep} onBack={goToPreviousStep} />
         );
       case "calculator":
         return (

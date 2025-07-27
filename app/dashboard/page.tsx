@@ -20,6 +20,7 @@ import { FinancialFreedomCalculator } from "@/components/FinancialFreedomCalcula
 import TokenSwapV2 from "@/components/TokenSwapV2";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { StatsCard, ActionCard } from "@/components/MobileCard";
+import TransactionHistory from "@/components/TransactionHistory";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { PortfolioEmptyState } from "@/components/EmptyState";
@@ -38,6 +39,7 @@ type TabType =
   | "calculator"
   | "swap"
   | "portfolio"
+  | "activity"
   | "learn"
   | "achievements"
   | "test";
@@ -169,6 +171,7 @@ export default function DashboardPage() {
           {activeTab === "calculator" && <FinancialFreedomCalculator />}
           {activeTab === "swap" && <TokenSwapV2 />}
           {activeTab === "portfolio" && <PortfolioTab />}
+          {activeTab === "activity" && <TransactionHistory />}
           {activeTab === "learn" && <LearnTab />}
           {activeTab === "achievements" && <AchievementsTab />}
           {activeTab === "test" && <APITest />}

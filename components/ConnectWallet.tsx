@@ -2,9 +2,11 @@
 
 import { usePrivy } from "@privy-io/react-auth";
 import { Wallet, LogOut } from "lucide-react";
+import { useENS } from "@/hooks/useENS";
 
 export function ConnectWallet() {
   const { login, logout, authenticated, user, ready } = usePrivy();
+  const { getDisplayName } = useENS();
 
   if (!ready) {
     return (
@@ -30,10 +32,7 @@ export function ConnectWallet() {
   return (
     <div className="flex items-center space-x-2">
       <div className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-3 rounded-lg">
-        <span>
-          {user?.wallet?.address?.slice(0, 6)}...
-          {user?.wallet?.address?.slice(-4)}
-        </span>
+        <span>{getDisplayName()}</span>
       </div>
       <button
         onClick={logout}

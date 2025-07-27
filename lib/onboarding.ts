@@ -27,6 +27,12 @@ export const ONBOARDING_STEPS: Omit<OnboardingStep, 'completed'>[] = [
     required: true,
   },
   {
+    id: 'ens',
+    title: 'Create Your Identity',
+    description: 'Choose your ENS name - your unique username on the blockchain',
+    required: true,
+  },
+  {
     id: 'calculator',
     title: 'Calculate Your Financial Freedom',
     description: 'Discover how much you need to save for financial independence',

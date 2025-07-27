@@ -12,6 +12,7 @@ import {
   TestTube,
   Menu,
   X,
+  Activity,
 } from "lucide-react";
 
 type TabType =
@@ -19,6 +20,7 @@ type TabType =
   | "calculator"
   | "swap"
   | "portfolio"
+  | "activity"
   | "learn"
   | "achievements"
   | "test";
@@ -39,6 +41,7 @@ export function MobileNavigation({
     { id: "calculator", label: "Calculator", icon: Calculator },
     { id: "swap", label: "Swap", icon: TrendingUp },
     { id: "portfolio", label: "Portfolio", icon: PiggyBank },
+    { id: "activity", label: "Activity", icon: Activity },
     { id: "learn", label: "Learn", icon: BookOpen },
     { id: "achievements", label: "Achievements", icon: Trophy },
     { id: "test", label: "API Test", icon: TestTube },
