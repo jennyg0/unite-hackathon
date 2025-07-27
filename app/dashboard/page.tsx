@@ -20,12 +20,15 @@ import { FinancialFreedomCalculator } from "@/components/FinancialFreedomCalcula
 import { TokenSwap } from "@/components/TokenSwap";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { StatsCard, ActionCard } from "@/components/MobileCard";
+import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { usePrivy } from "@privy-io/react-auth";
+import { useOnboarding } from "@/components/OnboardingProvider";
 
 type TabType = "overview" | "calculator" | "swap" | "portfolio" | "learn";
 
 export default function DashboardPage() {
   const { authenticated, ready } = usePrivy();
+  const { state: onboardingState } = useOnboarding();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 
   // Wait for Privy to be ready before rendering
@@ -46,6 +49,15 @@ export default function DashboardPage() {
   }
 
   // Remove the tabs array since it's now in MobileNavigation
+
+  // Show onboarding for first-time users
+  if (
+    authenticated &&
+    onboardingState.isFirstTime &&
+    !onboardingState.completed
+  ) {
+    return <OnboardingFlow />;
+  }
 
   if (!authenticated) {
     return (
