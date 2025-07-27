@@ -18,6 +18,8 @@ import {
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { FinancialFreedomCalculator } from "@/components/FinancialFreedomCalculator";
 import { TokenSwap } from "@/components/TokenSwap";
+import { MobileNavigation } from "@/components/MobileNavigation";
+import { StatsCard, ActionCard } from "@/components/MobileCard";
 import { usePrivy } from "@privy-io/react-auth";
 
 type TabType = "overview" | "calculator" | "swap" | "portfolio" | "learn";
@@ -43,13 +45,7 @@ export default function DashboardPage() {
     );
   }
 
-  const tabs = [
-    { id: "overview", label: "Overview", icon: BarChart3 },
-    { id: "calculator", label: "Calculator", icon: Calculator },
-    { id: "swap", label: "Swap", icon: TrendingUp },
-    { id: "portfolio", label: "Portfolio", icon: PiggyBank },
-    { id: "learn", label: "Learn", icon: BookOpen },
-  ];
+  // Remove the tabs array since it's now in MobileNavigation
 
   if (!authenticated) {
     return (
@@ -106,40 +102,20 @@ export default function DashboardPage() {
         </nav>
       </header>
 
-      {/* Tab Navigation */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as TabType)}
-                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
-                    activeTab === tab.id
-                      ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </div>
+      {/* Mobile Navigation */}
+      <MobileNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8 pb-24 md:pb-8">
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeTab === "overview" && <OverviewTab />}
+          {activeTab === "overview" && (
+            <OverviewTab onTabChange={setActiveTab} />
+          )}
           {activeTab === "calculator" && <FinancialFreedomCalculator />}
           {activeTab === "swap" && <TokenSwap />}
           {activeTab === "portfolio" && <PortfolioTab />}
@@ -150,78 +126,68 @@ export default function DashboardPage() {
   );
 }
 
-function OverviewTab() {
+function OverviewTab({ onTabChange }: { onTabChange: (tab: TabType) => void }) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
-        <h1 className="text-3xl font-bold mb-2">
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 md:p-8 text-white">
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">
           Welcome to Your Financial Journey
         </h1>
-        <p className="text-blue-100 text-lg">
+        <p className="text-blue-100 text-base md:text-lg">
           Start building your financial freedom with smart DeFi strategies
         </p>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="card">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <PiggyBank className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Total Savings</p>
-              <p className="text-2xl font-bold text-gray-900">$0.00</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">APY Earned</p>
-              <p className="text-2xl font-bold text-gray-900">0.00%</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Target className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Progress to Goal</p>
-              <p className="text-2xl font-bold text-gray-900">0%</p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+        <StatsCard
+          icon={PiggyBank}
+          title="Total Savings"
+          value="$0.00"
+          color="green"
+        />
+        <StatsCard
+          icon={TrendingUp}
+          title="APY Earned"
+          value="0.00%"
+          color="blue"
+        />
+        <StatsCard
+          icon={Target}
+          title="Progress to Goal"
+          value="0%"
+          color="purple"
+        />
       </div>
 
       {/* Quick Actions */}
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="card">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Quick Actions
           </h3>
-          <div className="space-y-3">
-            <button className="w-full btn-primary flex items-center justify-between">
-              <span>Calculate Financial Freedom</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button className="w-full btn-secondary flex items-center justify-between">
-              <span>Swap Tokens</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button className="w-full btn-secondary flex items-center justify-between">
-              <span>Set Up Auto-Deposits</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
+          <ActionCard
+            icon={Calculator}
+            title="Calculate Financial Freedom"
+            description="Find out how much you need to save for financial independence"
+            onClick={() => onTabChange("calculator")}
+            color="blue"
+          />
+          <ActionCard
+            icon={TrendingUp}
+            title="Swap Tokens"
+            description="Exchange tokens to start building your portfolio"
+            onClick={() => onTabChange("swap")}
+            color="green"
+          />
+          <ActionCard
+            icon={PiggyBank}
+            title="Set Up Auto-Deposits"
+            description="Automate your savings with recurring deposits"
+            onClick={() => {}}
+            color="purple"
+          />
         </div>
 
         <div className="card">
