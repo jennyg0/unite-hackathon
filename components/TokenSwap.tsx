@@ -200,13 +200,15 @@ export function TokenSwap() {
   const tokenList = Object.values(availableTokens);
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <ArrowDownUp className="w-8 h-8 text-green-600" />
+    <div className="max-w-2xl mx-auto p-4 md:p-6">
+      <div className="text-center mb-6 md:mb-8">
+        <div className="w-12 h-12 md:w-16 md:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+          <ArrowDownUp className="w-6 h-6 md:w-8 md:h-8 text-green-600" />
         </div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Token Swap</h2>
-        <p className="text-gray-600">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+          Token Swap
+        </h2>
+        <p className="text-sm md:text-base text-gray-600 px-4">
           Swap tokens using 1inch aggregation for the best rates
         </p>
       </div>
@@ -237,7 +239,7 @@ export function TokenSwap() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             From
           </label>
-          <div className="flex space-x-2">
+          <div className="space-y-3 md:space-y-0 md:flex md:space-x-2">
             <select
               value={fromToken?.address || ""}
               onChange={(e) => {
@@ -246,7 +248,7 @@ export function TokenSwap() {
                 );
                 setFromToken(token || null);
               }}
-              className="input-field flex-1"
+              className="input-field flex-1 h-12 md:h-10 text-base"
             >
               <option value="">Select token</option>
               {tokenList.map((token) => (
@@ -260,7 +262,7 @@ export function TokenSwap() {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.0"
-              className="input-field w-32"
+              className="input-field w-full md:w-32 h-12 md:h-10 text-base"
             />
           </div>
         </div>
@@ -273,9 +275,9 @@ export function TokenSwap() {
               setFromToken(toToken);
               setToToken(temp);
             }}
-            className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+            className="w-12 h-12 md:w-10 md:h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
           >
-            <ArrowDownUp className="w-5 h-5 text-gray-600" />
+            <ArrowDownUp className="w-6 h-6 md:w-5 md:h-5 text-gray-600" />
           </button>
         </div>
 
@@ -290,7 +292,7 @@ export function TokenSwap() {
               const token = tokenList.find((t) => t.address === e.target.value);
               setToToken(token || null);
             }}
-            className="input-field"
+            className="input-field h-12 md:h-10 text-base"
           >
             <option value="">Select token</option>
             {tokenList.map((token) => (
@@ -362,7 +364,7 @@ export function TokenSwap() {
         <button
           onClick={executeSwap}
           disabled={!quote || loading}
-          className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn-primary w-full py-3 md:py-4 text-base md:text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading
             ? "Processing..."

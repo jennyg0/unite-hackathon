@@ -42,31 +42,31 @@ export function FinancialFreedomCalculator() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Calculator className="w-8 h-8 text-blue-600" />
+    <div className="max-w-4xl mx-auto p-4 md:p-6">
+      <div className="text-center mb-6 md:mb-8">
+        <div className="w-12 h-12 md:w-16 md:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+          <Calculator className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
         </div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
           Financial Freedom Calculator
         </h2>
-        <p className="text-gray-600">
+        <p className="text-sm md:text-base text-gray-600 px-4">
           Calculate how much you need to save to achieve financial independence
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
         {/* Input Form */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="card"
         >
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">
+          <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-4 md:mb-6">
             Your Financial Information
           </h3>
 
-          <div className="space-y-4">
+          <div className="space-y-4 md:space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Monthly Expenses
@@ -78,7 +78,7 @@ export function FinancialFreedomCalculator() {
                   value={monthlyExpenses}
                   onChange={(e) => setMonthlyExpenses(e.target.value)}
                   placeholder="0.00"
-                  className="input-field pl-10"
+                  className="input-field pl-10 h-12 md:h-10 text-base"
                 />
               </div>
             </div>
@@ -94,7 +94,7 @@ export function FinancialFreedomCalculator() {
                   value={currentSavings}
                   onChange={(e) => setCurrentSavings(e.target.value)}
                   placeholder="0.00"
-                  className="input-field pl-10"
+                  className="input-field pl-10 h-12 md:h-10 text-base"
                 />
               </div>
             </div>
@@ -110,14 +110,14 @@ export function FinancialFreedomCalculator() {
                   value={monthlySavings}
                   onChange={(e) => setMonthlySavings(e.target.value)}
                   placeholder="0.00"
-                  className="input-field pl-10"
+                  className="input-field pl-10 h-12 md:h-10 text-base"
                 />
               </div>
             </div>
 
             <button
               onClick={calculateFinancialFreedom}
-              className="btn-primary w-full mt-6"
+              className="btn-primary w-full mt-6 py-3 md:py-4 text-base md:text-lg font-semibold"
             >
               Calculate Financial Freedom
             </button>
@@ -130,12 +130,12 @@ export function FinancialFreedomCalculator() {
           animate={{ opacity: 1, x: 0 }}
           className="card"
         >
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">
+          <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-4 md:mb-6">
             Your Results
           </h3>
 
           {result ? (
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               <div className="bg-blue-50 rounded-lg p-4">
                 <div className="flex items-center space-x-3 mb-2">
                   <Target className="w-5 h-5 text-blue-600" />
@@ -151,7 +151,7 @@ export function FinancialFreedomCalculator() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h5 className="text-sm font-medium text-gray-600 mb-1">
                     Yearly Expenses
@@ -193,10 +193,22 @@ export function FinancialFreedomCalculator() {
                   Next Steps
                 </h4>
                 <ul className="text-sm text-purple-700 space-y-1">
-                  <li>• Set up automated monthly deposits</li>
-                  <li>• Consider DeFi yield strategies</li>
-                  <li>• Track your progress regularly</li>
-                  <li>• Adjust your savings rate as needed</li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Set up automated monthly deposits</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Consider DeFi yield strategies</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Track your progress regularly</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>Adjust your savings rate as needed</span>
+                  </li>
                 </ul>
               </div>
             </div>
