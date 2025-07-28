@@ -8,11 +8,15 @@ import {
   AlertCircle,
   CheckCircle,
   Info,
+  RefreshCw,
+  X,
 } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 import { getOneInchAPI } from "@/lib/1inch-api";
 import type { TokenInfo, QuoteResponse } from "@/lib/1inch-api";
 import { parseUnits, formatUnits } from "viem";
+import { createPublicClient, http, encodeFunctionData } from "viem";
+import { mainnet, polygon, base } from "viem/chains";
 
 export default function TokenSwapV2() {
   const { authenticated, user, sendTransaction } = usePrivy();
@@ -81,6 +85,98 @@ export default function TokenSwapV2() {
     }
   };
 
+  // Check token allowance
+  const checkAllowance = async (
+    tokenAddress: string,
+    spenderAddress: string
+  ): Promise<bigint> => {
+    if (!address) return BigInt(0);
+
+    // Native token doesn't need approval
+    if (
+      tokenAddress.toLowerCase() ===
+      "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    ) {
+      return BigInt(
+        "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+      ); // Max uint256
+    }
+
+    try {
+      // ERC20 ABI for allowance function
+      const abi = [
+        {
+          name: "allowance",
+          type: "function",
+          stateMutability: "view",
+          inputs: [
+            { name: "owner", type: "address" },
+            { name: "spender", type: "address" },
+          ],
+          outputs: [{ name: "", type: "uint256" }],
+        },
+      ] as const;
+
+      // Create public client to read contract
+      const publicClient = createPublicClient({
+        chain: chainId === 137 ? polygon : chainId === 8453 ? base : mainnet,
+        transport: http(),
+      });
+
+      const allowance = await publicClient.readContract({
+        address: tokenAddress as `0x${string}`,
+        abi,
+        functionName: "allowance",
+        args: [address as `0x${string}`, spenderAddress as `0x${string}`],
+      });
+
+      return allowance;
+    } catch (error) {
+      console.error("Failed to check allowance:", error);
+      return BigInt(0);
+    }
+  };
+
+  // Approve token spending
+  const approveToken = async (
+    tokenAddress: string,
+    spenderAddress: string,
+    amount: bigint
+  ) => {
+    if (!address) return;
+
+    try {
+      // ERC20 ABI for approve function
+      const abi = [
+        {
+          name: "approve",
+          type: "function",
+          stateMutability: "nonpayable",
+          inputs: [
+            { name: "spender", type: "address" },
+            { name: "amount", type: "uint256" },
+          ],
+          outputs: [{ name: "", type: "bool" }],
+        },
+      ] as const;
+
+      const txHash = await sendTransaction({
+        to: tokenAddress as `0x${string}`,
+        data: encodeFunctionData({
+          abi,
+          functionName: "approve",
+          args: [spenderAddress as `0x${string}`, amount],
+        }),
+        chainId,
+      });
+
+      return txHash;
+    } catch (error) {
+      console.error("Failed to approve token:", error);
+      throw error;
+    }
+  };
+
   // Execute swap
   const executeSwap = async () => {
     if (!quote || !address || !fromToken || !toToken) return;
@@ -91,15 +187,54 @@ export default function TokenSwapV2() {
 
     try {
       const api = getOneInchAPI(chainId);
+
+      // First get the swap data to know the router address
       const swapData = await api.getSwap({
         fromTokenAddress: fromToken.address,
         toTokenAddress: toToken.address,
         amount: quote.fromTokenAmount,
         fromAddress: address,
         slippage,
+        disableEstimate: true, // We already have the quote
       });
 
-      // Send transaction using Privy
+      // Check if we need to approve the token
+      const isNativeToken =
+        fromToken.address.toLowerCase() ===
+        "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+      if (!isNativeToken) {
+        const allowance = await checkAllowance(
+          fromToken.address,
+          swapData.tx.to
+        );
+        const requiredAmount = BigInt(quote.fromTokenAmount);
+
+        if (allowance < requiredAmount) {
+          setSuccess("Approving token spend...");
+
+          // Approve exact amount needed
+          const approveTxHash = await approveToken(
+            fromToken.address,
+            swapData.tx.to,
+            requiredAmount
+          );
+
+          if (approveTxHash) {
+            const txHashStr =
+              typeof approveTxHash === "string"
+                ? approveTxHash
+                : approveTxHash.transactionHash;
+            setSuccess(`Token approved! Tx: ${txHashStr.slice(0, 10)}...`);
+          }
+
+          // Wait a bit for approval to be mined
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+        }
+      }
+
+      // Execute the swap
+      setSuccess("Executing swap...");
       const txHash = await sendTransaction({
         to: swapData.tx.to,
         data: swapData.tx.data,
@@ -107,9 +242,22 @@ export default function TokenSwapV2() {
         chainId,
       });
 
-      setSuccess(`Swap successful! Transaction: ${txHash}`);
+      const txHashStr =
+        typeof txHash === "string" ? txHash : txHash.transactionHash;
+      setSuccess(
+        `Swap successful! Transaction: ${txHashStr.slice(
+          0,
+          10
+        )}...${txHashStr.slice(-8)}`
+      );
       setQuote(null);
       setAmount("");
+
+      // Refresh balances after a delay
+      setTimeout(() => {
+        // This would trigger a balance refresh in the parent component
+        window.dispatchEvent(new Event("balanceUpdate"));
+      }, 5000);
     } catch (err: any) {
       setError(err.message || "Failed to execute swap");
     } finally {
@@ -362,18 +510,100 @@ export default function TokenSwapV2() {
           </div>
         )}
 
-        {/* Action Button */}
+        {/* Swap Button */}
         <button
           onClick={executeSwap}
-          disabled={!quote || loading}
-          className="btn-primary w-full py-3 md:py-4 text-base md:text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={
+            !fromToken ||
+            !toToken ||
+            !amount ||
+            parseFloat(amount) <= 0 ||
+            loading ||
+            !quote ||
+            !address
+          }
+          className={`w-full py-4 md:py-3 px-4 rounded-lg font-medium transition-all text-base ${
+            loading
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : !fromToken || !toToken || !amount || parseFloat(amount) <= 0
+              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+              : !quote
+              ? "bg-blue-200 text-blue-400 cursor-not-allowed"
+              : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
+          }`}
         >
-          {loading
-            ? "Processing..."
-            : quote
-            ? `Swap ${fromToken?.symbol} for ${toToken?.symbol}`
-            : "Enter amount to get quote"}
+          {loading ? (
+            <span className="flex items-center justify-center">
+              <RefreshCw className="w-5 h-5 animate-spin mr-2" />
+              {success && !error ? success : "Processing..."}
+            </span>
+          ) : !authenticated ? (
+            "Connect Wallet"
+          ) : !fromToken || !toToken ? (
+            "Select tokens"
+          ) : !amount || parseFloat(amount) <= 0 ? (
+            "Enter amount"
+          ) : !quote ? (
+            "Getting quote..."
+          ) : (
+            "Swap"
+          )}
         </button>
+
+        {/* Transaction Status */}
+        {(error || success) && !loading && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`mt-4 p-4 rounded-lg ${
+              error
+                ? "bg-red-50 border border-red-200"
+                : "bg-green-50 border border-green-200"
+            }`}
+          >
+            <div className="flex items-start space-x-3">
+              {error ? (
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              ) : (
+                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <p
+                  className={`text-sm font-medium ${
+                    error ? "text-red-900" : "text-green-900"
+                  }`}
+                >
+                  {error || success}
+                </p>
+                {success && success.includes("Transaction:") && (
+                  <a
+                    href={`${
+                      chainId === 137
+                        ? "https://polygonscan.com/tx/"
+                        : chainId === 8453
+                        ? "https://basescan.org/tx/"
+                        : "https://etherscan.io/tx/"
+                    }${success.match(/0x[a-fA-F0-9]+/)?.[0] || ""}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:text-blue-700 mt-1 inline-block"
+                  >
+                    View on Explorer →
+                  </a>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setError("");
+                  setSuccess("");
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
 
         {/* Info */}
         <div className="mt-4 space-y-2">

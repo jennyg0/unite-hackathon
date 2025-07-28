@@ -38,6 +38,21 @@ export function WalletBalance({
     }
   }, [walletAddress, fetchWalletBalances]);
 
+  // Listen for balance update events
+  useEffect(() => {
+    const handleBalanceUpdate = () => {
+      // Force refresh balances
+      if (walletAddress) {
+        fetchWalletBalances(walletAddress);
+      }
+    };
+
+    window.addEventListener("balanceUpdate", handleBalanceUpdate);
+    return () => {
+      window.removeEventListener("balanceUpdate", handleBalanceUpdate);
+    };
+  }, [walletAddress, fetchWalletBalances]);
+
   // Filter balances based on settings
   const filteredBalances = walletBalances.filter((balance) => {
     const hasBalance = parseFloat(balance.balance) > 0;
@@ -127,15 +142,53 @@ export function WalletBalance({
       {/* Balance List */}
       {showBalances && (
         <div className="space-y-3">
-          {sortedBalances.length === 0 ? (
+          {loading.balances && sortedBalances.length === 0 ? (
+            // Loading skeleton
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-gray-200 rounded-full" />
+                      <div>
+                        <div className="h-4 w-16 bg-gray-200 rounded mb-1" />
+                        <div className="h-3 w-24 bg-gray-200 rounded" />
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="h-4 w-20 bg-gray-200 rounded mb-1" />
+                      <div className="h-3 w-16 bg-gray-200 rounded" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : sortedBalances.length === 0 ? (
             <div className="text-center py-8">
               <Wallet className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 mb-2">No tokens found</p>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-400 mb-4">
                 {showZeroBalances
                   ? "Your wallet is empty"
                   : "No tokens with balance"}
               </p>
+              {!showZeroBalances && (
+                <p className="text-xs text-gray-400 mb-4">
+                  Try enabling "Show zero balances" to see all tokens
+                </p>
+              )}
+              <div className="bg-blue-50 rounded-lg p-4 max-w-sm mx-auto">
+                <p className="text-sm text-blue-900 mb-2">
+                  Ready to start saving?
+                </p>
+                <p className="text-xs text-blue-700">
+                  Deposit some funds to begin your financial freedom journey. We
+                  support USDC, USDT, and other popular tokens on Polygon.
+                </p>
+              </div>
             </div>
           ) : (
             <AnimatePresence>
@@ -257,10 +310,10 @@ export function WalletBalance({
       </div>
 
       {/* Loading State */}
-      {loading.balances && (
-        <div className="text-center py-8">
-          <RefreshCw className="w-6 h-6 text-gray-400 animate-spin mx-auto mb-2" />
-          <p className="text-sm text-gray-500">Loading wallet balances...</p>
+      {loading.balances && sortedBalances.length > 0 && (
+        <div className="text-center py-4">
+          <RefreshCw className="w-4 h-4 text-gray-400 animate-spin mx-auto mb-1" />
+          <p className="text-xs text-gray-500">Updating balances...</p>
         </div>
       )}
     </div>

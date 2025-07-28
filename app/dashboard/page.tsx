@@ -23,16 +23,19 @@ import { StatsCard, ActionCard } from "@/components/MobileCard";
 import TransactionHistory from "@/components/TransactionHistory";
 import { OnboardingFlow } from "@/components/OnboardingFlow";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
+import AutomatedDeposits from "@/components/AutomatedDeposits";
+import RiskProfileDisplay from "@/components/RiskProfileDisplay";
 import { PortfolioEmptyState } from "@/components/EmptyState";
 import { WalletBalance } from "@/components/WalletBalance";
 import { PriceFeed } from "@/components/PriceFeed";
 import { MiniWalletBalance } from "@/components/WalletBalance";
 import { MiniPriceFeed } from "@/components/PriceFeed";
-import { NFTMilestones } from "@/components/NFTMilestones";
+import NFTMilestones from "@/components/NFTMilestones";
 import { TokenChart } from "@/components/TokenChart";
 import { APITest } from "@/components/APITest";
 import { usePrivy } from "@privy-io/react-auth";
 import { useOnboarding } from "@/components/OnboardingProvider";
+import EducationCenter from "@/components/EducationCenter";
 
 type TabType =
   | "overview"
@@ -172,7 +175,11 @@ export default function DashboardPage() {
           {activeTab === "swap" && <TokenSwapV2 />}
           {activeTab === "portfolio" && <PortfolioTab />}
           {activeTab === "activity" && <TransactionHistory />}
-          {activeTab === "learn" && <LearnTab />}
+          {activeTab === "learn" && (
+            <div className="max-w-7xl mx-auto">
+              <EducationCenter />
+            </div>
+          )}
           {activeTab === "achievements" && <AchievementsTab />}
           {activeTab === "test" && <APITest />}
         </motion.div>
@@ -335,63 +342,12 @@ function PortfolioTab() {
           days={30}
         />
       </div>
-    </div>
-  );
-}
 
-function LearnTab() {
-  return (
-    <div className="space-y-8">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Learn & Earn</h1>
-        <p className="text-gray-600">
-          Educational content to help you understand DeFi and personal finance
-        </p>
-      </div>
+      {/* Risk Profile */}
+      <RiskProfileDisplay />
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="card">
-          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-            <BookOpen className="w-6 h-6 text-blue-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            What is DeFi?
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Learn the basics of decentralized finance and how it can help you
-            build wealth.
-          </p>
-          <button className="btn-primary">Start Learning</button>
-        </div>
-
-        <div className="card">
-          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-            <Calculator className="w-6 h-6 text-green-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Financial Freedom
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Understand the 4% rule and how to calculate your financial
-            independence number.
-          </p>
-          <button className="btn-primary">Learn More</button>
-        </div>
-
-        <div className="card">
-          <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-            <Shield className="w-6 h-6 text-purple-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Risk Management
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Learn about different risk levels and how to protect your
-            investments.
-          </p>
-          <button className="btn-primary">Explore</button>
-        </div>
-      </div>
+      {/* Automated Deposits */}
+      <AutomatedDeposits />
     </div>
   );
 }
