@@ -3,27 +3,15 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  BarChart3,
-  Calculator,
-  TrendingUp,
-  PiggyBank,
-  BookOpen,
-  Trophy,
-  TestTube,
+  DollarSign,
+  History,
   Menu,
   X,
-  Activity,
 } from "lucide-react";
 
 type TabType =
-  | "overview"
-  | "calculator"
-  | "swap"
-  | "portfolio"
-  | "activity"
-  | "learn"
-  | "achievements"
-  | "test";
+  | "earnings"
+  | "history";
 
 interface MobileNavigationProps {
   activeTab: TabType;
@@ -37,14 +25,8 @@ export function MobileNavigation({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const tabs = [
-    { id: "overview", label: "Overview", icon: BarChart3 },
-    { id: "calculator", label: "Calculator", icon: Calculator },
-    { id: "swap", label: "Swap", icon: TrendingUp },
-    { id: "portfolio", label: "Portfolio", icon: PiggyBank },
-    { id: "activity", label: "Activity", icon: Activity },
-    { id: "learn", label: "Learn", icon: BookOpen },
-    { id: "achievements", label: "Achievements", icon: Trophy },
-    { id: "test", label: "API Test", icon: TestTube },
+    { id: "earnings", label: "Earnings", icon: DollarSign },
+    { id: "history", label: "History", icon: History },
   ];
 
   return (
@@ -61,7 +43,7 @@ export function MobileNavigation({
                   onClick={() => onTabChange(tab.id as TabType)}
                   className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                     activeTab === tab.id
-                      ? "border-blue-500 text-blue-600"
+                      ? "border-green-500 text-green-600"
                       : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
@@ -86,12 +68,12 @@ export function MobileNavigation({
                 onClick={() => onTabChange(tab.id as TabType)}
                 className={`flex flex-col items-center py-3 px-2 min-w-0 flex-1 transition-colors duration-200 ${
                   isActive
-                    ? "text-blue-600"
+                    ? "text-green-600"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 <Icon
-                  className={`w-5 h-5 mb-1 ${isActive ? "text-blue-600" : ""}`}
+                  className={`w-5 h-5 mb-1 ${isActive ? "text-green-600" : ""}`}
                 />
                 <span className="text-xs font-medium truncate">
                   {tab.label}
@@ -99,7 +81,7 @@ export function MobileNavigation({
                 {isActive && (
                   <motion.div
                     layoutId="activeTab"
-                    className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-0.5 bg-blue-600 rounded-full"
+                    className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-0.5 bg-green-600 rounded-full"
                     initial={false}
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   />
@@ -155,7 +137,7 @@ export function MobileNavigation({
                       }}
                       className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors duration-200 ${
                         activeTab === tab.id
-                          ? "bg-blue-50 text-blue-600"
+                          ? "bg-green-50 text-green-600"
                           : "text-gray-600 hover:bg-gray-50"
                       }`}
                     >
