@@ -5,6 +5,7 @@ import { useOnboarding } from "./OnboardingProvider";
 import { OnboardingWelcome } from "./onboarding/OnboardingWelcome";
 import OnboardingENS from "./onboarding/OnboardingENS";
 import { OnboardingCalculator } from "./onboarding/OnboardingCalculator";
+import OnboardingRiskProfile from "./onboarding/OnboardingRiskProfile";
 import { OnboardingGoals } from "./onboarding/OnboardingGoals";
 import { OnboardingStrategy } from "./onboarding/OnboardingStrategy";
 import { OnboardingEducation } from "./onboarding/OnboardingEducation";
@@ -29,6 +30,16 @@ export function OnboardingFlow() {
           <OnboardingCalculator
             onNext={goToNextStep}
             onBack={goToPreviousStep}
+          />
+        );
+      case "risk-profile":
+        return (
+          <OnboardingRiskProfile
+            onComplete={(data) => {
+              // Save risk profile data to state
+              goToNextStep();
+            }}
+            initialData={state.userGoals}
           />
         );
       case "goals":
