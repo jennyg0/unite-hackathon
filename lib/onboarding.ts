@@ -39,28 +39,22 @@ export const ONBOARDING_STEPS: Omit<OnboardingStep, 'completed'>[] = [
     required: true,
   },
   {
-    id: 'goals',
-    title: 'Set Your Savings Goals',
-    description: 'Define your monthly savings target and timeline',
+    id: 'risk-profile',
+    title: 'Choose Your Risk Profile',
+    description: 'Select a savings strategy that matches your goals and risk tolerance',
     required: true,
   },
   {
-    id: 'strategy',
-    title: 'Choose Your Strategy',
-    description: 'Select your preferred approach to building wealth',
+    id: 'setup-savings',
+    title: 'Set Up Your Savings',
+    description: 'Configure your automated savings plan',
     required: false,
   },
   {
-    id: 'education',
-    title: 'Learn the Basics',
-    description: 'Understand DeFi and how it can accelerate your savings',
+    id: 'first-deposit',
+    title: 'Make Your First Deposit',
+    description: 'Start your journey with your first contribution',
     required: false,
-  },
-  {
-    id: 'complete',
-    title: 'You\'re All Set!',
-    description: 'Start your journey to financial freedom',
-    required: true,
   },
 ];
 

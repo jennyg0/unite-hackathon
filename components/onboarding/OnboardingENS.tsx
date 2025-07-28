@@ -11,7 +11,11 @@ import {
   Info,
   Sparkles,
   Search,
+  Clock,
+  DollarSign,
 } from "lucide-react";
+import { useENS } from "@/hooks/useENS";
+import { useENSRegistration } from "@/hooks/useENSRegistration";
 
 interface OnboardingENSProps {
   onNext: () => void;
@@ -20,6 +24,21 @@ interface OnboardingENSProps {
 
 export default function OnboardingENS({ onNext, onBack }: OnboardingENSProps) {
   const { user } = usePrivy();
+  const {
+    hasENS,
+    ensName: existingENS,
+    checkAvailability: checkENSAvailability,
+    setUserENS,
+  } = useENS();
+  const {
+    state: registrationState,
+    price,
+    checkNameAndPrice,
+    startRegistration,
+    completeRegistration,
+    timeRemaining,
+  } = useENSRegistration();
+
   const [ensName, setEnsName] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
@@ -41,7 +60,7 @@ export default function OnboardingENS({ onNext, onBack }: OnboardingENSProps) {
     }
   }, [user]);
 
-  // Check ENS availability (mock for now)
+  // Check ENS availability using real blockchain data with pricing
   const checkAvailability = async (name: string) => {
     if (!name || name.length < 3) {
       setError("ENS name must be at least 3 characters");
@@ -52,18 +71,19 @@ export default function OnboardingENS({ onNext, onBack }: OnboardingENSProps) {
     setIsChecking(true);
     setError("");
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const available = await checkNameAndPrice(name);
+      setIsAvailable(available);
 
-    // Mock availability check - in production, this would check ENS registry
-    const mockTakenNames = ["vitalik", "ethereum", "defi", "crypto", "money"];
-    const isNameAvailable = !mockTakenNames.includes(name.toLowerCase());
-
-    setIsAvailable(isNameAvailable);
-    setIsChecking(false);
-
-    if (!isNameAvailable) {
-      setError(`${name}.eth is already taken`);
+      if (!available && registrationState.error) {
+        setError(registrationState.error);
+      }
+    } catch (error) {
+      console.error("Error checking ENS:", error);
+      setError("Error checking availability. Please try again.");
+      setIsAvailable(false);
+    } finally {
+      setIsChecking(false);
     }
   };
 
@@ -80,19 +100,56 @@ export default function OnboardingENS({ onNext, onBack }: OnboardingENSProps) {
     }
   }, [ensName]);
 
-  const handleContinue = () => {
-    if (isAvailable && ensName) {
-      // In production, this would initiate ENS registration
-      // For now, we'll just store it and move forward
-      localStorage.setItem("userENSName", ensName);
+  // Skip this step if user already has ENS
+  useEffect(() => {
+    if (hasENS && existingENS) {
       onNext();
     }
+  }, [hasENS, existingENS, onNext]);
+
+  const handleContinue = async () => {
+    if (isAvailable && ensName) {
+      // Start the actual ENS registration
+      await startRegistration(ensName);
+    }
   };
+
+  // Handle registration state changes
+  useEffect(() => {
+    if (registrationState.step === "complete") {
+      // Registration successful!
+      setUserENS(ensName);
+      onNext();
+    }
+  }, [registrationState.step, ensName, setUserENS, onNext]);
 
   const handleSkip = () => {
     // Allow users to skip ENS for now
     onNext();
   };
+
+  // Show loading state while checking existing ENS
+  if (hasENS && existingENS) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className="max-w-2xl mx-auto text-center"
+      >
+        <div className="card">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold mb-2">
+            You already have an ENS name!
+          </h3>
+          <p className="text-lg text-gray-600">Your ENS: {existingENS}.eth</p>
+          <p className="text-sm text-gray-500 mt-2">
+            Redirecting to next step...
+          </p>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -208,19 +265,101 @@ export default function OnboardingENS({ onNext, onBack }: OnboardingENSProps) {
         )}
 
         {/* Cost Information */}
-        <div className="bg-gray-50 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">
-              Registration Cost
-            </span>
-            <span className="text-sm font-semibold text-gray-900">
-              ~$5-20 USD
-            </span>
+        {price && (
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">
+                Registration Cost (1 year)
+              </span>
+              <span className="text-sm font-semibold text-gray-900">
+                {price.totalEth} ETH
+              </span>
+            </div>
+            <p className="text-xs text-gray-600">
+              ENS names require a yearly fee. Price includes gas buffer.
+            </p>
           </div>
-          <p className="text-xs text-gray-600">
-            ENS names require a yearly fee. Shorter names cost more.
-          </p>
-        </div>
+        )}
+
+        {/* Registration Status */}
+        {registrationState.step !== "idle" &&
+          registrationState.step !== "checking" && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              {registrationState.step === "committing" && (
+                <div className="flex items-center space-x-3">
+                  <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                  <div>
+                    <p className="font-medium text-blue-900">
+                      Submitting commitment...
+                    </p>
+                    <p className="text-sm text-blue-700">
+                      Please confirm the transaction in your wallet
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {registrationState.step === "waiting" && (
+                <div className="flex items-center space-x-3">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <p className="font-medium text-blue-900">
+                      Waiting period...
+                    </p>
+                    <p className="text-sm text-blue-700">
+                      {Math.ceil(timeRemaining / 1000)}s remaining before
+                      registration
+                    </p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      This prevents front-running attacks
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {registrationState.step === "registering" && (
+                <div className="flex items-center space-x-3">
+                  <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                  <div>
+                    <p className="font-medium text-blue-900">
+                      Completing registration...
+                    </p>
+                    <p className="text-sm text-blue-700">
+                      Please confirm the final transaction
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {registrationState.step === "complete" && (
+                <div className="flex items-center space-x-3">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-900">
+                      Registration complete!
+                    </p>
+                    <p className="text-sm text-green-700">
+                      You now own {ensName}.eth
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {registrationState.step === "error" && (
+                <div className="flex items-center space-x-3">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  <div>
+                    <p className="font-medium text-red-900">
+                      Registration failed
+                    </p>
+                    <p className="text-sm text-red-700">
+                      {registrationState.error}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
@@ -237,8 +376,19 @@ export default function OnboardingENS({ onNext, onBack }: OnboardingENSProps) {
             Skip for now
           </button>
           <button
-            onClick={handleContinue}
-            disabled={!isAvailable || !ensName || isChecking}
+            onClick={
+              registrationState.step === "waiting" && timeRemaining <= 0
+                ? completeRegistration
+                : handleContinue
+            }
+            disabled={
+              !isAvailable ||
+              !ensName ||
+              isChecking ||
+              registrationState.step === "committing" ||
+              registrationState.step === "registering" ||
+              (registrationState.step === "waiting" && timeRemaining > 0)
+            }
             className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isChecking ? (
@@ -246,6 +396,18 @@ export default function OnboardingENS({ onNext, onBack }: OnboardingENSProps) {
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 Checking...
               </>
+            ) : registrationState.step === "waiting" && timeRemaining <= 0 ? (
+              "Complete Registration"
+            ) : registrationState.step === "waiting" ? (
+              `Wait ${Math.ceil(timeRemaining / 1000)}s`
+            ) : registrationState.step === "committing" ||
+              registrationState.step === "registering" ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : price ? (
+              `Register for ${price.totalEth} ETH`
             ) : (
               "Continue with ENS"
             )}
