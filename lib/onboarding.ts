@@ -22,39 +22,39 @@ export interface OnboardingState {
 export const ONBOARDING_STEPS: Omit<OnboardingStep, 'completed'>[] = [
   {
     id: 'welcome',
-    title: 'Welcome to Your Financial Journey',
-    description: 'Let\'s get to know you and set up your personalized savings plan',
+    title: 'Welcome to Compound',
+    description: 'The savings account that actually beats inflation',
     required: true,
   },
   {
-    id: 'ens',
-    title: 'Create Your Identity',
-    description: 'Choose your ENS name - your unique username on the blockchain',
+    id: 'username',
+    title: 'Choose Your Username',
+    description: 'Make your account personal - no more ugly addresses',
     required: true,
   },
   {
-    id: 'calculator',
-    title: 'Calculate Your Financial Freedom',
-    description: 'Discover how much you need to save for financial independence',
+    id: 'start-earning',
+    title: 'Start Earning 12% APY',
+    description: 'Set up automatic deposits and see projected returns',
     required: true,
   },
   {
     id: 'risk-profile',
-    title: 'Choose Your Risk Profile',
-    description: 'Select a savings strategy that matches your goals and risk tolerance',
+    title: 'Optimize Your Returns',
+    description: 'Quick question to maximize your earnings (optional)',
+    required: false,
+  },
+  {
+    id: 'tour',
+    title: 'Quick Tour',
+    description: 'See what else you can do (30 seconds)',
+    required: false,
+  },
+  {
+    id: 'complete',
+    title: 'All Set!',
+    description: 'Your money is now growing automatically',
     required: true,
-  },
-  {
-    id: 'setup-savings',
-    title: 'Set Up Your Savings',
-    description: 'Configure your automated savings plan',
-    required: false,
-  },
-  {
-    id: 'first-deposit',
-    title: 'Make Your First Deposit',
-    description: 'Start your journey with your first contribution',
-    required: false,
   },
 ];
 

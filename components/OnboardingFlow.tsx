@@ -3,12 +3,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useOnboarding } from "./OnboardingProvider";
 import { OnboardingWelcome } from "./onboarding/OnboardingWelcome";
-import OnboardingENS from "./onboarding/OnboardingENS";
-import { OnboardingCalculator } from "./onboarding/OnboardingCalculator";
+import OnboardingUsername from "./onboarding/OnboardingUsername";
+import OnboardingStartEarning from "./onboarding/OnboardingStartEarning";
 import OnboardingRiskProfile from "./onboarding/OnboardingRiskProfile";
-import { OnboardingGoals } from "./onboarding/OnboardingGoals";
-import { OnboardingStrategy } from "./onboarding/OnboardingStrategy";
-import { OnboardingEducation } from "./onboarding/OnboardingEducation";
+import OnboardingTour from "./onboarding/OnboardingTour";
 import { OnboardingComplete } from "./onboarding/OnboardingComplete";
 
 export function OnboardingFlow() {
@@ -21,44 +19,33 @@ export function OnboardingFlow() {
         return (
           <OnboardingWelcome onNext={goToNextStep} onSkip={skipOnboarding} />
         );
-      case "ens":
+      case "username":
         return (
-          <OnboardingENS onNext={goToNextStep} onBack={goToPreviousStep} />
+          <OnboardingUsername onNext={goToNextStep} onBack={goToPreviousStep} onSkip={goToNextStep} />
         );
-      case "calculator":
+      case "start-earning":
         return (
-          <OnboardingCalculator
-            onNext={goToNextStep}
-            onBack={goToPreviousStep}
-          />
+          <OnboardingStartEarning onNext={goToNextStep} onBack={goToPreviousStep} />
         );
       case "risk-profile":
         return (
           <OnboardingRiskProfile
-            onComplete={(data) => {
-              // Save risk profile data to state
-              goToNextStep();
-            }}
+            onNext={goToNextStep}
+            onBack={goToPreviousStep}
+            onSkip={goToNextStep}
             initialData={state.userGoals}
           />
         );
-      case "goals":
+      case "tour":
         return (
-          <OnboardingGoals onNext={goToNextStep} onBack={goToPreviousStep} />
-        );
-      case "strategy":
-        return (
-          <OnboardingStrategy onNext={goToNextStep} onBack={goToPreviousStep} />
-        );
-      case "education":
-        return (
-          <OnboardingEducation
+          <OnboardingTour
             onNext={goToNextStep}
             onBack={goToPreviousStep}
+            onSkip={goToNextStep}
           />
         );
       case "complete":
-        return <OnboardingComplete onBack={goToPreviousStep} />;
+        return <OnboardingComplete onFinish={skipOnboarding} />;
       default:
         return (
           <OnboardingWelcome onNext={goToNextStep} onSkip={skipOnboarding} />
@@ -67,12 +54,12 @@ export function OnboardingFlow() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50">
       {/* Progress Bar */}
       <div className="fixed top-0 left-0 right-0 z-50">
         <div className="h-1 bg-gray-200">
           <motion.div
-            className="h-full bg-gradient-to-r from-blue-600 to-purple-600"
+            className="h-full bg-gradient-to-r from-green-600 to-green-500"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.5, ease: "easeOut" }}
