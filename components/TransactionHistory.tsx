@@ -1,323 +1,445 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
+  ArrowUpRight,
+  ArrowDownLeft,
   Clock,
+  CheckCircle,
+  XCircle,
+  TrendingUp,
+  Repeat,
   ArrowRightLeft,
   ExternalLink,
-  TrendingUp,
-  TrendingDown,
-  Loader2,
-  History,
+  Filter,
+  Calendar,
+  DollarSign,
+  Activity,
+  Zap,
 } from "lucide-react";
+import {
+  transactionHistory,
+  Transaction,
+  TransactionSummary,
+  formatTransactionAmount,
+  getTransactionIcon,
+  getTransactionColor,
+} from "@/lib/transaction-history";
+import { TransactionSkeleton } from "@/components/ui/LoadingSkeletons";
+import { EmptyState } from "@/components/ui/ErrorStates";
 import { usePrivy } from "@privy-io/react-auth";
-import { formatUnits } from "viem";
-import { useENS } from "@/hooks/useENS";
 
-interface Transaction {
-  hash: string;
-  timestamp: number;
-  from: string;
-  to: string;
-  fromToken: {
-    symbol: string;
-    amount: string;
-    decimals: number;
-    logoURI?: string;
-  };
-  toToken: {
-    symbol: string;
-    amount: string;
-    decimals: number;
-    logoURI?: string;
-  };
-  status: "success" | "pending" | "failed";
-  gasUsed?: string;
-  network: string;
+interface TransactionHistoryProps {
+  limit?: number;
+  showSummary?: boolean;
 }
 
-// Mock data for demonstration - in production, fetch from 1inch API or blockchain
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    hash: "0x1234...5678",
-    timestamp: Date.now() - 3600000, // 1 hour ago
-    from: "0xuser...address",
-    to: "0x1inch...router",
-    fromToken: {
-      symbol: "MATIC",
-      amount: "100000000000000000000", // 100 MATIC
-      decimals: 18,
-    },
-    toToken: {
-      symbol: "USDC",
-      amount: "85000000", // 85 USDC
-      decimals: 6,
-    },
-    status: "success",
-    gasUsed: "0.05",
-    network: "Polygon",
-  },
-  {
-    hash: "0xabcd...efgh",
-    timestamp: Date.now() - 86400000, // 1 day ago
-    from: "0xuser...address",
-    to: "0x1inch...router",
-    fromToken: {
-      symbol: "USDC",
-      amount: "50000000", // 50 USDC
-      decimals: 6,
-    },
-    toToken: {
-      symbol: "WETH",
-      amount: "25000000000000000", // 0.025 WETH
-      decimals: 18,
-    },
-    status: "success",
-    gasUsed: "0.03",
-    network: "Polygon",
-  },
-];
-
-export default function TransactionHistory() {
-  const { user } = usePrivy();
-  const { getDisplayName } = useENS();
+export default function TransactionHistory({
+  limit = 20,
+  showSummary = true,
+}: TransactionHistoryProps) {
+  const { authenticated } = usePrivy();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [summary, setSummary] = useState<TransactionSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "swaps" | "deposits">("all");
+  const [filterType, setFilterType] = useState<Transaction["type"] | "all">(
+    "all"
+  );
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    // In production, fetch real transactions from 1inch API or blockchain
-    const fetchTransactions = async () => {
-      setIsLoading(true);
-      try {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        setTransactions(MOCK_TRANSACTIONS);
-      } catch (error) {
-        console.error("Failed to fetch transactions:", error);
-      } finally {
+    // Only load transactions if user is authenticated
+    const loadTransactions = async () => {
+      if (!authenticated) {
         setIsLoading(false);
+        return;
       }
+
+      setIsLoading(true);
+
+      // Disable demo mode for real users
+      transactionHistory.disableDemoMode();
+
+      // Simulate API delay for loading state
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const allTransactions = transactionHistory.getTransactions(limit);
+      const summaryData = transactionHistory.getSummary();
+
+      setTransactions(allTransactions);
+      setSummary(summaryData);
+      setIsLoading(false);
     };
 
-    if (user?.wallet?.address) {
-      fetchTransactions();
+    loadTransactions();
+  }, [limit, authenticated]);
+
+  const filteredTransactions =
+    filterType === "all"
+      ? transactions
+      : transactions.filter((tx) => tx.type === filterType);
+
+  const getStatusIcon = (status: Transaction["status"]) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case "pending":
+        return <Clock className="w-4 h-4 text-yellow-600" />;
+      case "failed":
+        return <XCircle className="w-4 h-4 text-red-600" />;
     }
-  }, [user]);
-
-  const formatAmount = (amount: string, decimals: number): string => {
-    const formatted = formatUnits(BigInt(amount), decimals);
-    const num = parseFloat(formatted);
-    if (num < 0.01) return "< 0.01";
-    if (num < 1) return num.toFixed(4);
-    if (num < 100) return num.toFixed(2);
-    return num.toFixed(0);
   };
 
-  const getRelativeTime = (timestamp: number): string => {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
-    if (seconds < 60) return `${seconds}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
+  const getTypeIcon = (type: Transaction["type"]) => {
+    switch (type) {
+      case "deposit":
+        return <ArrowDownLeft className="w-4 h-4 text-green-600" />;
+      case "automated_deposit":
+        return <Repeat className="w-4 h-4 text-blue-600" />;
+      case "earning":
+        return <TrendingUp className="w-4 h-4 text-purple-600" />;
+      case "cross_chain_swap":
+        return <ArrowRightLeft className="w-4 h-4 text-indigo-600" />;
+      case "withdrawal":
+        return <ArrowUpRight className="w-4 h-4 text-red-600" />;
+      default:
+        return <Activity className="w-4 h-4 text-gray-600" />;
+    }
   };
 
-  const getExplorerUrl = (hash: string, network: string): string => {
-    const explorers: Record<string, string> = {
-      Polygon: "https://polygonscan.com/tx/",
-      Ethereum: "https://etherscan.io/tx/",
-      Base: "https://basescan.org/tx/",
-    };
-    return `${explorers[network] || explorers.Polygon}${hash}`;
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+
+    return date.toLocaleDateString();
   };
 
-  if (!user?.wallet?.address) {
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  if (isLoading) {
     return (
-      <div className="card text-center py-12">
-        <History className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+      <div className="space-y-6">
+        {showSummary && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="card">
+                <div className="animate-pulse space-y-2">
+                  <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  <div className="h-6 bg-gray-200 rounded w-16"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="card">
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <TransactionSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="card text-center">
+        <Activity className="w-12 h-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-gray-900 mb-2">
           Connect Your Wallet
         </h3>
         <p className="text-gray-600">
-          Please connect your wallet to view transaction history
+          Connect your wallet to view your transaction history
         </p>
+      </div>
+    );
+  }
+
+  if (transactions.length === 0 && !isLoading) {
+    return (
+      <div className="space-y-4">
+        <EmptyState
+          icon={<Activity className="w-16 h-16" />}
+          title="No Transactions Yet"
+          message="Your transaction history will appear here once you start depositing and earning."
+          actionLabel="Make Your First Deposit"
+          onAction={() => {
+            // Navigate to earnings tab or trigger deposit
+            console.log("Navigate to deposit");
+          }}
+        />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Transaction History
-          </h2>
-          <p className="text-gray-600 mt-1">Track your swaps and deposits</p>
-        </div>
+      {/* Summary Cards */}
+      {showSummary && summary && (
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-4 gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <motion.div
+            className="card"
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total Deposited</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  ${summary.totalDeposited.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </motion.div>
 
-        {/* Filter Tabs */}
-        <div className="flex bg-gray-100 rounded-lg p-1">
-          {["all", "swaps", "deposits"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab as any)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                filter === tab
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
+          <motion.div
+            className="card"
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total Earned</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  ${summary.totalEarned.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="card"
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Activity className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Transactions</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {summary.totalTransactions}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="card"
+            whileHover={{ scale: 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <Zap className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Average APY</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {summary.averageApy.toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
 
       {/* Transaction List */}
-      <div className="card">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+      <motion.div
+        className="card"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        {/* Header with Filters */}
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Recent Activity
+          </h3>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <Filter className="w-4 h-4" />
+              <span>Filter</span>
+            </button>
           </div>
-        ) : transactions.length === 0 ? (
-          <div className="text-center py-12">
-            <History className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No transactions yet
-            </h3>
-            <p className="text-gray-600">
-              Your transaction history will appear here
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {transactions.map((tx, index) => (
+        </div>
+
+        {/* Filter Options */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-4 flex flex-wrap gap-2"
+            >
+              {(
+                [
+                  "all",
+                  "deposit",
+                  "automated_deposit",
+                  "earning",
+                  "cross_chain_swap",
+                ] as const
+              ).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setFilterType(type)}
+                  className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                    filterType === type
+                      ? "bg-green-100 text-green-700 border border-green-200"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {type === "all"
+                    ? "All"
+                    : type
+                        .replace("_", " ")
+                        .replace(/\b\w/g, (l) => l.toUpperCase())}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Transaction Items */}
+        <div className="space-y-3">
+          <AnimatePresence>
+            {filteredTransactions.map((transaction, index) => (
               <motion.div
-                key={tx.hash}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                key={transaction.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+                className={`flex items-center justify-between p-4 rounded-lg border transition-colors hover:bg-gray-50 ${
+                  transaction.status === "pending"
+                    ? "bg-yellow-50 border-yellow-200"
+                    : "border-gray-200"
+                }`}
               >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <ArrowRightLeft className="w-5 h-5 text-blue-600" />
+                <div className="flex items-center space-x-4">
+                  {/* Type Icon */}
+                  <div className="flex-shrink-0">
+                    {getTypeIcon(transaction.type)}
+                  </div>
+
+                  {/* Token Icon */}
+                  {transaction.token.logoURI ? (
+                    <img
+                      src={transaction.token.logoURI}
+                      alt={transaction.token.symbol}
+                      className="w-8 h-8 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                      <span className="text-xs font-medium text-gray-600">
+                        {transaction.token.symbol.slice(0, 2)}
+                      </span>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">Token Swap</p>
-                      <p className="text-sm text-gray-500">
-                        {getRelativeTime(tx.timestamp)} • {tx.network}
+                  )}
+
+                  {/* Transaction Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2">
+                      <p className="font-medium text-gray-900 truncate">
+                        {transaction.description}
                       </p>
+                      {getStatusIcon(transaction.status)}
+                    </div>
+
+                    <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                      <span>{formatDate(transaction.timestamp)}</span>
+                      <span>{formatTime(transaction.timestamp)}</span>
+                      {transaction.route && (
+                        <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                          {transaction.route}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <a
-                    href={getExplorerUrl(tx.hash, tx.network)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-700"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    {/* From Token */}
-                    <div className="text-center">
-                      <p className="text-sm text-gray-500">From</p>
-                      <p className="font-semibold text-gray-900">
-                        {formatAmount(
-                          tx.fromToken.amount,
-                          tx.fromToken.decimals
-                        )}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {tx.fromToken.symbol}
-                      </p>
-                    </div>
-
-                    <ArrowRightLeft className="w-4 h-4 text-gray-400" />
-
-                    {/* To Token */}
-                    <div className="text-center">
-                      <p className="text-sm text-gray-500">To</p>
-                      <p className="font-semibold text-gray-900">
-                        {formatAmount(tx.toToken.amount, tx.toToken.decimals)}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {tx.toToken.symbol}
-                      </p>
-                    </div>
-                  </div>
-
+                {/* Amount and Actions */}
+                <div className="flex items-center space-x-4">
                   <div className="text-right">
-                    <p className="text-sm text-gray-500">Status</p>
                     <p
-                      className={`text-sm font-medium ${
-                        tx.status === "success"
-                          ? "text-green-600"
-                          : tx.status === "pending"
-                          ? "text-yellow-600"
-                          : "text-red-600"
-                      }`}
+                      className={`font-semibold ${getTransactionColor(
+                        transaction.type
+                      )}`}
                     >
-                      {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
+                      {transaction.type === "withdrawal" ? "-" : "+"}$
+                      {transaction.amountUsd.toFixed(2)}
                     </p>
-                    {tx.gasUsed && (
-                      <p className="text-xs text-gray-500">
-                        Gas: {tx.gasUsed} MATIC
-                      </p>
-                    )}
+                    <p className="text-sm text-gray-500">
+                      {formatTransactionAmount(transaction)}
+                    </p>
                   </div>
+
+                  {transaction.txHash && (
+                    <button
+                      onClick={() =>
+                        window.open(
+                          `https://polygonscan.com/tx/${transaction.txHash}`,
+                          "_blank"
+                        )
+                      }
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </motion.div>
             ))}
-          </div>
-        )}
-      </div>
-
-      {/* Summary Stats */}
-      {transactions.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Swaps</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {transactions.filter((tx) => tx.status === "success").length}
-                </p>
-              </div>
-              <ArrowRightLeft className="w-8 h-8 text-gray-400" />
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Volume (24h)</p>
-                <p className="text-2xl font-bold text-gray-900">$135.50</p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-green-500" />
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Gas Saved</p>
-                <p className="text-2xl font-bold text-gray-900">$2.45</p>
-              </div>
-              <TrendingDown className="w-8 h-8 text-blue-500" />
-            </div>
-          </div>
+          </AnimatePresence>
         </div>
-      )}
+
+        {/* Show More Button */}
+        {filteredTransactions.length === limit && (
+          <motion.div
+            className="text-center mt-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <button className="text-green-600 hover:text-green-700 font-medium">
+              Load More Transactions
+            </button>
+          </motion.div>
+        )}
+      </motion.div>
     </div>
   );
 }
