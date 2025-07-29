@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
  * @title AutomatedDeposits
@@ -67,7 +67,7 @@ contract AutomatedDeposits is ReentrancyGuard, Ownable, Pausable {
         _;
     }
 
-    constructor(address _feeRecipient) {
+    constructor(address _feeRecipient) Ownable(msg.sender) {
         feeRecipient = _feeRecipient;
         keepers[msg.sender] = true;
     }
@@ -178,8 +178,37 @@ contract AutomatedDeposits is ReentrancyGuard, Ownable, Pausable {
             s
         );
 
-        // Execute the deposit
-        executeDeposit(user, scheduleId);
+        // Execute the deposit after permit 
+        uint256 depositAmount = schedule.amount;
+        uint256 feeAmount = (depositAmount * protocolFeeBps) / 10000;
+        uint256 netAmount = depositAmount - feeAmount;
+
+        // Transfer tokens from user to recipient
+        IERC20(schedule.token).transferFrom(
+            schedule.user,
+            schedule.recipient,
+            netAmount
+        );
+
+        // Transfer fee if applicable
+        if (feeAmount > 0) {
+            IERC20(schedule.token).transferFrom(
+                schedule.user,
+                feeRecipient,
+                feeAmount
+            );
+        }
+
+        // Update schedule
+        schedule.nextDeposit = block.timestamp + schedule.frequency;
+        schedule.totalDeposited += depositAmount;
+
+        emit DepositExecuted(
+            user,
+            scheduleId,
+            depositAmount,
+            schedule.nextDeposit
+        );
     }
 
     /**
