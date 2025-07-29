@@ -86,6 +86,58 @@ class OneInchAPI {
     this.chainId = chainId;
   }
 
+  private async requestPost(endpoint: string, body: Record<string, any> = {}) {
+    // Use proxy in browser to avoid CORS issues
+    const isBrowser = typeof window !== 'undefined';
+    let url: URL;
+    
+    if (isBrowser) {
+      // In browser, use relative URL with current origin
+      url = new URL(`/api/1inch${endpoint}`, window.location.origin);
+    } else {
+      // On server, use direct 1inch API
+      url = new URL(`${BASE_URL}${endpoint}`);
+    }
+
+    console.log('1inch API POST Request:', {
+      endpoint,
+      url: url.toString(),
+      isBrowser,
+      body
+    });
+
+    try {
+      const headers: HeadersInit = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
+      
+      // Only add Authorization header when not using proxy (server-side)
+      if (!isBrowser) {
+        headers['Authorization'] = `Bearer ${this.apiKey}`;
+      }
+
+      const response = await fetch(url.toString(), { 
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('1inch API error response:', errorText);
+        throw new Error(`1inch API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('1inch API Response:', data);
+      return data;
+    } catch (error) {
+      console.error('1inch API request failed:', error);
+      throw error;
+    }
+  }
+
   private async request(endpoint: string, params: Record<string, any> = {}) {
     // Use proxy in browser to avoid CORS issues
     const isBrowser = typeof window !== 'undefined';
@@ -200,47 +252,174 @@ class OneInchAPI {
     }
   }
 
-  // Get multiple token prices
+  // Get multiple token prices using the bulk POST endpoint
   async getTokenPrices(tokenAddresses: string[]): Promise<PriceData[]> {
     try {
-      const response = await this.request(`/price/v1.1/${this.chainId}`, {
-        token_addresses: tokenAddresses.join(','),
+      if (tokenAddresses.length === 0) {
+        return [];
+      }
+      
+      console.log('💵 Getting prices for tokens:', tokenAddresses);
+      
+      const response = await this.requestPost(`/price/v1.1/${this.chainId}`, {
+        tokens: tokenAddresses,
+        currency: 'USD'
       });
       
-      return Object.entries(response).map(([token, price]: [string, any]) => ({
-        token,
-        price: parseFloat(price),
-        timestamp: Date.now(),
-      }));
+      console.log('💵 Bulk price API response:', response);
+      
+      if (!response || typeof response !== 'object') {
+        console.error('❌ Invalid bulk price response');
+        return [];
+      }
+      
+      const prices: PriceData[] = [];
+      
+      for (const [tokenAddr, priceStr] of Object.entries(response)) {
+        const price = parseFloat(priceStr as string);
+        if (price > 0) {
+          console.log(`💰 Price for ${tokenAddr}: $${price}`);
+          prices.push({
+            token: tokenAddr,
+            price,
+            timestamp: Date.now(),
+          });
+        }
+      }
+      
+      console.log('✅ Processed prices:', prices);
+      return prices;
     } catch (error) {
-      console.error('Failed to fetch token prices:', error);
+      console.error('❌ Failed to fetch token prices:', error);
       return [];
     }
   }
-
-  // Get wallet balances
+v
+  // Get wallet balances using Balance API
   async getWalletBalances(walletAddress: string): Promise<WalletBalance[]> {
     try {
-      const response = await this.request(`/balance/v1.2/${this.chainId}/balances`, {
-        wallet_address: walletAddress,
+      console.log('🔍 Fetching balances for wallet:', walletAddress);
+      console.log('🌐 Using chain ID:', this.chainId);
+      
+      const response = await this.request(`/balance/v1.2/${this.chainId}/balances/${walletAddress}`);
+      
+      console.log('📊 Raw balance API response:', response);
+      
+      if (!response || typeof response !== 'object') {
+        console.warn('❌ Invalid balance response format:', response);
+        return [];
+      }
+
+      const balances: WalletBalance[] = [];
+      
+      // Get all supported tokens to get metadata
+      const allTokens = await this.getTokens();
+      const tokenMap = new Map();
+      allTokens.forEach(token => {
+        tokenMap.set(token.address.toLowerCase(), token);
       });
       
-      return Object.entries(response).map(([address, data]: [string, any]) => ({
-        token: {
-          address,
-          symbol: data.symbol || 'Unknown',
-          name: data.name || 'Unknown Token',
-          decimals: data.decimals || 18,
-          logoURI: data.logoURI || '',
-          tags: data.tags || [],
-          chainId: this.chainId,
-        },
-        balance: data.balance || '0',
-        balanceUsd: parseFloat(data.balanceUsd || '0'),
-      }));
+      // Handle the actual API response format: { "tokenAddress": "balance" }
+      for (const [tokenAddress, balanceStr] of Object.entries(response)) {
+        const balance = balanceStr as string;
+        console.log(`🪙 Processing token ${tokenAddress}: balance=${balance}`);
+        
+        // Skip tokens with zero balance
+        if (!balance || balance === '0') {
+          continue;
+        }
+        
+        // Get token metadata
+        let tokenInfo = tokenMap.get(tokenAddress.toLowerCase());
+        
+        // Handle native token (POL/MATIC)
+        if (tokenAddress === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') {
+          tokenInfo = {
+            address: tokenAddress,
+            symbol: this.chainId === 137 ? 'POL' : 'ETH',
+            name: this.chainId === 137 ? 'Polygon' : 'Ethereum',
+            decimals: 18,
+            logoURI: this.chainId === 137 
+              ? 'https://wallet-asset.matic.network/img/tokens/pol.svg'
+              : 'https://wallet-asset.matic.network/img/tokens/eth.svg',
+            tags: ['native'],
+            chainId: this.chainId,
+          };
+        }
+        
+        if (!tokenInfo) {
+          // If we don't have token metadata, create a basic one
+          tokenInfo = {
+            address: tokenAddress,
+            symbol: 'Unknown',
+            name: `Token ${tokenAddress.slice(0, 8)}...`,
+            decimals: 18,
+            logoURI: '',
+            tags: [],
+            chainId: this.chainId,
+          };
+        }
+        
+        const walletBalance: WalletBalance = {
+          token: tokenInfo,
+          balance,
+          balanceUsd: 0, // Will be calculated with prices
+        };
+        
+        console.log(`💰 Processed balance:`, walletBalance);
+        balances.push(walletBalance);
+      }
+
+      console.log('✅ Final balances:', balances);
+      
+      return balances;
     } catch (error) {
-      console.error('Failed to fetch wallet balances:', error);
-      return [];
+      console.error('❌ Failed to fetch wallet balances:', error);
+      return []; // Return empty array if API fails - no fake data
+    }
+  }
+
+  // Get portfolio overview using Portfolio API
+  async getPortfolioOverview(walletAddress: string): Promise<{
+    totalValue: number;
+    totalPnl: number;
+    totalPnlPercentage: number;
+    assets: Array<{
+      token: TokenInfo;
+      balance: string;
+      balanceUsd: number;
+      price: number;
+      pnl: number;
+      pnlPercentage: number;
+    }>;
+  } | null> {
+    try {
+      const response = await this.request(`/portfolio/v4/${this.chainId}/overview/erc20/${walletAddress}`);
+      
+      return {
+        totalValue: parseFloat(response.totalValue || '0'),
+        totalPnl: parseFloat(response.totalPnl || '0'),
+        totalPnlPercentage: parseFloat(response.totalPnlPercentage || '0'),
+        assets: (response.assets || []).map((asset: any) => ({
+          token: {
+            address: asset.token?.address || '',
+            symbol: asset.token?.symbol || 'Unknown',
+            name: asset.token?.name || 'Unknown Token',
+            decimals: asset.token?.decimals || 18,
+            logoURI: asset.token?.logoURI || '',
+            tags: asset.token?.tags || [],
+            chainId: this.chainId,
+          },
+          balance: asset.balance || '0',
+          balanceUsd: parseFloat(asset.balanceUsd || '0'),
+          price: parseFloat(asset.price || '0'),
+          pnl: parseFloat(asset.pnl || '0'),
+          pnlPercentage: parseFloat(asset.pnlPercentage || '0'),
+        })),
+      };
+    } catch (error) {
+      console.error('Failed to fetch portfolio overview:', error);
+      return null; // Return null if API fails - no fake data
     }
   }
 
@@ -298,12 +477,10 @@ class OneInchAPI {
     }
   }
 
-  // Get token metadata
+  // Get token metadata using Token API
   async getTokenMetadata(tokenAddress: string): Promise<TokenInfo | null> {
     try {
-      const response = await this.request(`/token/v1.2/${this.chainId}/metadata`, {
-        token_address: tokenAddress,
-      });
+      const response = await this.request(`/token/v1.2/${this.chainId}/custom/${tokenAddress}`);
       
       return {
         address: tokenAddress,
@@ -317,6 +494,98 @@ class OneInchAPI {
     } catch (error) {
       console.error('Failed to fetch token metadata:', error);
       return null;
+    }
+  }
+
+  // Get detailed token information using Token Details API  
+  async getTokenDetails(tokenAddress: string): Promise<{
+    token: TokenInfo;
+    price: number;
+    priceChange24h: number;
+    marketCap: number;
+    volume24h: number;
+    circulatingSupply: string;
+    totalSupply: string;
+  } | null> {
+    try {
+      const response = await this.request(`/token/v1.2/${this.chainId}/custom/${tokenAddress}`);
+      
+      return {
+        token: {
+          address: tokenAddress,
+          symbol: response.symbol || 'Unknown',
+          name: response.name || 'Unknown Token',
+          decimals: response.decimals || 18,
+          logoURI: response.logoURI || '',
+          tags: response.tags || [],
+          chainId: this.chainId,
+        },
+        price: parseFloat(response.price || '0'),
+        priceChange24h: parseFloat(response.priceChange24h || '0'),
+        marketCap: parseFloat(response.marketCap || '0'),
+        volume24h: parseFloat(response.volume24h || '0'),
+        circulatingSupply: response.circulatingSupply || '0',
+        totalSupply: response.totalSupply || '0',
+      };
+    } catch (error) {
+      console.error('Failed to fetch token details:', error);
+      return null;
+    }
+  }
+
+  // Get wallet's transaction history using History API
+  async getTransactionHistory(walletAddress: string, limit: number = 100): Promise<Array<{
+    hash: string;
+    blockNumber: number;
+    timestamp: number;
+    from: string;
+    to: string;
+    value: string;
+    gasUsed: string;
+    gasPrice: string;
+    status: string;
+    tokenTransfers: Array<{
+      token: TokenInfo;
+      from: string;
+      to: string;
+      amount: string;
+      amountUsd: number;
+    }>;
+  }>> {
+    try {
+      const response = await this.request(`/history/v2.0/${this.chainId}/history/${walletAddress}`, {
+        limit: limit.toString(),
+      });
+      
+      return (response.transactions || []).map((tx: any) => ({
+        hash: tx.hash,
+        blockNumber: tx.blockNumber,
+        timestamp: tx.timestamp,
+        from: tx.from,
+        to: tx.to,
+        value: tx.value || '0',
+        gasUsed: tx.gasUsed || '0', 
+        gasPrice: tx.gasPrice || '0',
+        status: tx.status || 'unknown',
+        tokenTransfers: (tx.tokenTransfers || []).map((transfer: any) => ({
+          token: {
+            address: transfer.token?.address || '',
+            symbol: transfer.token?.symbol || 'Unknown',
+            name: transfer.token?.name || 'Unknown Token',
+            decimals: transfer.token?.decimals || 18,
+            logoURI: transfer.token?.logoURI || '',
+            tags: transfer.token?.tags || [],
+            chainId: this.chainId,
+          },
+          from: transfer.from,
+          to: transfer.to,
+          amount: transfer.amount || '0',
+          amountUsd: parseFloat(transfer.amountUsd || '0'),
+        })),
+      }));
+    } catch (error) {
+      console.error('Failed to fetch transaction history:', error);
+      return [];
     }
   }
 
@@ -411,8 +680,8 @@ class OneInchAPI {
     }
   }
 
-  // Get swap transaction data
-  async getSwap(params: {
+  // Get Classic Swap (same-chain) transaction data
+  async getClassicSwap(params: {
     fromTokenAddress: string;
     toTokenAddress: string;
     amount: string;
@@ -432,12 +701,155 @@ class OneInchAPI {
         allowPartialFill: params.allowPartialFill || false,
       };
 
-      const response = await this.request(`/swap/v5.2/${this.chainId}/swap`, swapParams);
+      const response = await this.request(`/swap/v6.0/${this.chainId}/swap`, swapParams);
       return response;
     } catch (error) {
-      console.error('Failed to get swap data:', error);
+      console.error('Failed to get classic swap data:', error);
       throw error;
     }
+  }
+
+  // Get Classic Swap quote
+  async getClassicSwapQuote(
+    fromTokenAddress: string,
+    toTokenAddress: string,
+    amount: string,
+    walletAddress?: string
+  ): Promise<QuoteResponse | null> {
+    try {
+      const params: Record<string, any> = {
+        src: fromTokenAddress,
+        dst: toTokenAddress,
+        amount,
+        from: walletAddress,
+        slippage: 1, // 1% slippage
+      };
+
+      const response = await this.request(`/swap/v6.0/${this.chainId}/quote`, params);
+      
+      return {
+        fromToken: response.fromToken,
+        toToken: response.toToken,
+        fromTokenAmount: response.fromTokenAmount,
+        toTokenAmount: response.toTokenAmount,
+        protocols: response.protocols || [],
+        tx: response.tx,
+      };
+    } catch (error) {
+      console.error('Failed to fetch classic swap quote:', error);
+      return null;
+    }
+  }
+
+  // Get Fusion+ cross-chain swap quote
+  async getFusionQuote(params: {
+    fromTokenAddress: string;
+    toTokenAddress: string;
+    amount: string;
+    fromChainId: number;
+    toChainId: number;
+    fromAddress: string;
+    slippage?: number;
+  }): Promise<{
+    fromToken: TokenInfo;
+    toToken: TokenInfo;
+    fromAmount: string;
+    toAmount: string;
+    estimatedGas: string;
+    fees: Array<{
+      type: 'network' | 'protocol' | 'bridge';
+      amount: string;
+      amountUsd: number;
+    }>;
+    estimatedTimeMinutes: number;
+    route: Array<{
+      chainId: number;
+      protocol: string;
+      action: 'swap' | 'bridge';
+      estimatedGas: string;
+    }>;
+  } | null> {
+    try {
+      const response = await this.request('/fusion/v1.0/quote', {
+        srcChainId: params.fromChainId,
+        dstChainId: params.toChainId,
+        srcTokenAddress: params.fromTokenAddress,
+        dstTokenAddress: params.toTokenAddress,
+        amount: params.amount,
+        walletAddress: params.fromAddress,
+        slippage: params.slippage || 1,
+      });
+
+      return {
+        fromToken: response.srcToken,
+        toToken: response.dstToken,
+        fromAmount: response.srcAmount,
+        toAmount: response.dstAmount,
+        estimatedGas: response.estimatedGas || '0',
+        fees: response.fees || [],
+        estimatedTimeMinutes: response.estimatedTime || 5,
+        route: response.route || [],
+      };
+    } catch (error) {
+      console.error('Failed to get Fusion+ quote:', error);
+      return null;
+    }
+  }
+
+  // Execute Fusion+ cross-chain swap
+  async getFusionSwap(params: {
+    fromTokenAddress: string;
+    toTokenAddress: string;
+    amount: string;
+    fromChainId: number;
+    toChainId: number;
+    fromAddress: string;
+    slippage?: number;
+  }): Promise<{
+    transactions: Array<{
+      chainId: number;
+      to: string;
+      data: string;
+      value: string;
+      gasLimit: string;
+      gasPrice: string;
+    }>;
+    orderHash?: string;
+    estimatedTimeMinutes: number;
+  }> {
+    try {
+      const response = await this.request('/fusion/v1.0/swap', {
+        srcChainId: params.fromChainId,
+        dstChainId: params.toChainId,
+        srcTokenAddress: params.fromTokenAddress,
+        dstTokenAddress: params.toTokenAddress,
+        amount: params.amount,
+        walletAddress: params.fromAddress,
+        slippage: params.slippage || 1,
+      });
+
+      return {
+        transactions: response.transactions || [],
+        orderHash: response.orderHash,
+        estimatedTimeMinutes: response.estimatedTime || 5,
+      };
+    } catch (error) {
+      console.error('Failed to execute Fusion+ swap:', error);
+      throw error;
+    }
+  }
+
+  // Legacy getSwap method (redirects to Classic Swap)
+  async getSwap(params: {
+    fromTokenAddress: string;
+    toTokenAddress: string;
+    amount: string;
+    fromAddress: string;
+    slippage?: number;
+    disableEstimate?: boolean;
+    allowPartialFill?: boolean;
+  }): Promise<SwapResponse> {
+    return this.getClassicSwap(params);
   }
 
   // Get supported protocols

@@ -28,18 +28,25 @@ import { FloatingActionButton } from "@/components/FloatingActionButton";
 import AutomatedDeposits from "@/components/AutomatedDeposits";
 import RiskProfileDisplay from "@/components/RiskProfileDisplay";
 import { PortfolioEmptyState } from "@/components/EmptyState";
-import { WalletBalance } from "@/components/WalletBalance";
+import WalletBalanceV2 from "@/components/WalletBalanceV2";
+import SmartDeposit from "@/components/SmartDeposit";
 import { PriceFeed } from "@/components/PriceFeed";
-import { MiniWalletBalance } from "@/components/WalletBalance";
-import { MiniPriceFeed } from "@/components/PriceFeed";
 import NFTMilestones from "@/components/NFTMilestones";
 import { TokenChart } from "@/components/TokenChart";
 import { APITest } from "@/components/APITest";
 import { usePrivy } from "@privy-io/react-auth";
 import { useOnboarding } from "@/components/OnboardingProvider";
 import EducationCenter from "@/components/EducationCenter";
+import PortfolioCharts from "@/components/PortfolioCharts";
+import MiniPortfolioChart from "@/components/MiniPortfolioChart";
+import { 
+  BalanceCardSkeleton, 
+  StatsCardSkeleton, 
+  TokenBalanceSkeleton,
+  LoadingDots
+} from "@/components/ui/LoadingSkeletons";
 
-type TabType = "earnings" | "history";
+type TabType = "earnings" | "portfolio" | "history";
 
 export default function DashboardPage() {
   const { authenticated, ready } = usePrivy();
@@ -50,15 +57,32 @@ export default function DashboardPage() {
   if (!ready) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <TrendingUp className="w-8 h-8 text-green-600 animate-pulse" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Loading...
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <motion.div 
+            className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"
+            animate={{ 
+              scale: [1, 1.1, 1],
+              rotate: [0, 5, -5, 0]
+            }}
+            transition={{ 
+              duration: 2, 
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          >
+            <TrendingUp className="w-8 h-8 text-green-600" />
+          </motion.div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2 flex items-center justify-center space-x-2">
+            <span>Loading</span>
+            <LoadingDots />
           </h2>
           <p className="text-gray-600">Initializing your compound account</p>
-        </div>
+        </motion.div>
       </div>
     );
   }
@@ -153,6 +177,7 @@ export default function DashboardPage() {
           transition={{ duration: 0.3 }}
         >
           {activeTab === "earnings" && <EarningsTab />}
+          {activeTab === "portfolio" && <PortfolioTab />}
           {activeTab === "history" && <HistoryTab />}
         </motion.div>
       </main>
@@ -163,155 +188,87 @@ export default function DashboardPage() {
   );
 }
 
-// EARNINGS TAB - Main money dashboard with integrated setup
+// EARNINGS TAB - Main money dashboard with smart deposits
 function EarningsTab() {
-  const [showSetup, setShowSetup] = useState(false);
-  const [monthlyAmount, setMonthlyAmount] = useState("");
-
-  const handleStartEarning = () => {
-    setShowSetup(true);
-  };
-
-  const handleSetupDeposit = () => {
-    // This is where we'd integrate with your TokenSwapV2 logic
-    // But hidden from the user - just "Setting up your account..."
-    alert(`Setting up $${monthlyAmount}/month automatic savings...`);
-    setShowSetup(false);
-  };
-
-  if (showSetup) {
-    return (
-      <div className="max-w-lg mx-auto">
-        <div className="card">
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <DollarSign className="w-8 h-8 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Start Earning 12% APY
-            </h2>
-            <p className="text-gray-600">
-              How much would you like to save each month?
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Monthly Amount
-              </label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="number"
-                  value={monthlyAmount}
-                  onChange={(e) => setMonthlyAmount(e.target.value)}
-                  placeholder="100"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg"
-                />
-              </div>
-            </div>
-
-            <div className="bg-green-50 rounded-lg p-4">
-              <div className="text-sm text-green-700">
-                <strong>Projected annual earnings:</strong> $
-                {monthlyAmount
-                  ? (parseFloat(monthlyAmount) * 12 * 0.124).toFixed(0)
-                  : "0"}
-              </div>
-              <div className="text-xs text-green-600 mt-1">
-                Based on 12.4% APY • Withdraw anytime
-              </div>
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowSetup(false)}
-                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSetupDeposit}
-                disabled={!monthlyAmount || parseFloat(monthlyAmount) <= 0}
-                className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                Start Earning
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const { authenticated } = usePrivy();
 
   return (
     <div className="space-y-6 md:space-y-8">
-      {/* Main Balance Display */}
-      <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-xl p-6 md:p-8 text-white">
-        <div className="text-center">
-          <p className="text-green-100 text-sm md:text-base mb-2">
-            Total Balance
-          </p>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">$0.00</h1>
-          <div className="flex items-center justify-center space-x-4 text-sm md:text-base">
-            <div className="flex items-center space-x-1">
-              <span className="text-green-100">+$0.00 this week</span>
-            </div>
-            <div className="w-1 h-1 bg-green-300 rounded-full"></div>
-            <div className="flex items-center space-x-1">
-              <span className="text-green-100">12.4% APY</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Real Wallet Balance Display */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <WalletBalanceV2 />
+      </motion.div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-        <StatsCard
-          icon={TrendingUp}
-          title="Weekly Earnings"
-          value="+$0.00"
-          color="green"
+      {/* Smart Deposit - Invisible cross-chain magic */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <SmartDeposit 
+          onDepositComplete={(amount, isRecurring) => {
+            console.log(`Deposit complete: $${amount}, recurring: ${isRecurring}`);
+            // This would update the user's balance and show success
+          }}
+          onViewHistory={() => setActiveTab("history")}
         />
-        <StatsCard
-          icon={Target}
-          title="vs Banks (0.01%)"
-          value="1,240x better"
-          color="green"
-        />
-        <StatsCard
-          icon={Shield}
-          title="Inflation Protection"
-          value="+$0.00"
-          color="green"
-        />
-      </div>
+      </motion.div>
 
-      {/* Get Started Section */}
-      <div className="card">
-        <div className="text-center py-8">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <TrendingUp className="w-10 h-10 text-green-600" />
-          </div>
-          <h3 className="text-2xl font-semibold text-gray-900 mb-3">
-            Your Money Could Be Growing
-          </h3>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">
-            While you're earning 0.01% at the bank, you could be earning 12.4%
-            here. Set up automatic deposits and watch your balance grow.
-          </p>
-          <button
-            onClick={handleStartEarning}
-            className="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium text-lg"
+      {/* Recent Activity Preview - Only show if user has transactions */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+          <button 
+            onClick={() => setActiveTab("history")}
+            className="text-green-600 hover:text-green-700 text-sm font-medium"
           >
-            Start Earning 12% APY
+            View All →
           </button>
-          <p className="text-xs text-gray-500 mt-3">
-            No fees • Withdraw anytime • FDIC-level security
-          </p>
         </div>
+        <TransactionHistory limit={3} showSummary={false} />
+      </motion.div>
+    </div>
+  );
+}
+
+// PORTFOLIO TAB - Advanced portfolio analytics with charts
+function PortfolioTab() {
+  return (
+    <div className="space-y-6 md:space-y-8">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+          Portfolio Analytics
+        </h2>
+        <p className="text-gray-600">
+          Track your assets and performance across all chains
+        </p>
       </div>
+
+      {/* Comprehensive Wallet Balance with 1inch APIs */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <WalletBalanceV2 />
+      </motion.div>
+      
+      {/* Live Portfolio Charts */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <PortfolioCharts />
+      </motion.div>
     </div>
   );
 }
@@ -320,31 +277,22 @@ function EarningsTab() {
 // HISTORY TAB - Transaction history
 function HistoryTab() {
   return (
-    <div className="max-w-4xl mx-auto">
+    <motion.div 
+      className="max-w-6xl mx-auto"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="text-center mb-6">
         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-          History
+          Transaction History
         </h2>
         <p className="text-gray-600">
-          Track your deposits and earnings over time
+          Track your deposits, earnings, and automated payments over time
         </p>
       </div>
 
-      {/* Empty State */}
-      <div className="card">
-        <div className="text-center py-12">
-          <History className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            No Activity Yet
-          </h3>
-          <p className="text-gray-600 mb-6">
-            Once you start earning, your deposits and earnings will appear here
-          </p>
-          <button className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
-            Start Earning Now
-          </button>
-        </div>
-      </div>
-    </div>
+      <TransactionHistory limit={50} showSummary={true} />
+    </motion.div>
   );
 }
