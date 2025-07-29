@@ -3,7 +3,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { parseUnits, Address } from 'viem';
 import { createGelatoAutomation } from '@/lib/gelato-automation';
 import { ethers } from 'ethers';
-import { create1inchProvider, getUSDCBalance, formatBalance } from '@/lib/1inch-rpc';
+// import { create1inchProvider, getUSDCBalance, formatBalance } from '@/lib/1inch-rpc'; // Disabled due to API issues
 import { 
   CONTRACTS, 
   DEPOSIT_FREQUENCIES, 
@@ -84,8 +84,9 @@ export function useAutomatedDeposits() {
 
       // Check USDC balance using 1inch RPC
       try {
-        const balance = await getUSDCBalance(user.wallet.address, DEFAULT_CHAIN_ID);
-        const formattedBalance = formatBalance(balance, 6); // USDC has 6 decimals
+        // const balance = await getUSDCBalance(user.wallet.address, DEFAULT_CHAIN_ID);
+        // const formattedBalance = formatBalance(balance, 6); // USDC has 6 decimals
+        const formattedBalance = '0'; // Disabled due to RPC issues
         console.log('User USDC balance:', formattedBalance);
       } catch (error) {
         console.error('Failed to fetch USDC balance:', error);
