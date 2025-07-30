@@ -7,7 +7,7 @@
 
 export interface Transaction {
   id: string;
-  type: 'deposit' | 'earning' | 'automated_deposit' | 'cross_chain_swap' | 'withdrawal';
+  type: 'deposit' | 'earning' | 'automated_deposit' | 'cross_chain_swap' | 'withdrawal' | 'ai_strategy';
   status: 'pending' | 'completed' | 'failed';
   amount: string;
   amountUsd: number;
@@ -31,6 +31,7 @@ export interface Transaction {
   description: string;
   apy?: number;
   route?: string; // For cross-chain transactions
+  protocols?: string[]; // For AI strategy transactions
 }
 
 export interface TransactionSummary {

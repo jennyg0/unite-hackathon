@@ -3,10 +3,10 @@ import {base, polygon, mainnet, gnosis} from 'viem/chains';
 export const privyConfig = {
   appId: process.env.NEXT_PUBLIC_PRIVY_APP_ID || 'your-privy-app-id',
   config: {
-    loginMethods: ['wallet', 'email'], 
+    loginMethods: ['wallet', 'email'] as ('wallet' | 'email')[], 
     appearance: {
-      theme: 'light',
-      accentColor: '#0ea5e9',
+      theme: 'light' as const,
+      accentColor: '#0ea5e9' as `#${string}`,
       showWalletLoginFirst: true,
     },
     supportedChains: [base, polygon, mainnet, gnosis],

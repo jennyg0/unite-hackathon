@@ -162,12 +162,13 @@ export function create1inchProvider(chainId: number = 1): ethers.JsonRpcProvider
   });
 
   // Add auth header to all requests
-  provider.options = {
-    ...provider.options,
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-    },
-  };
+  // Note: Ethers v6 provider options may differ
+  // provider.options = {
+  //   ...provider.options,
+  //   headers: {
+  //     'Authorization': `Bearer ${apiKey}`,
+  //   },
+  // };
 console.log(provider, 'provider')
   return provider;
 }
