@@ -4,7 +4,7 @@ const CHARTS_API_BASE_URL = 'https://api.1inch.dev/charts/v1.0';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
     const apiKey = process.env.NEXT_PUBLIC_1INCH_API_KEY;
@@ -16,7 +16,8 @@ export async function GET(
     }
 
     // Reconstruct the path
-    const path = params.path.join('/');
+    const resolvedParams = await params;
+    const path = resolvedParams.path.join('/');
     const searchParams = request.nextUrl.searchParams.toString();
     const fullPath = searchParams ? `${path}?${searchParams}` : path;
 

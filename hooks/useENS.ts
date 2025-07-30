@@ -3,16 +3,10 @@ import { usePrivy } from '@privy-io/react-auth';
 import { createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
 import { normalize } from 'viem/ens';
-// Create a public client for ENS lookups on mainnet using 1inch RPC
+// Create a public client for ENS lookups using our 1inch proxy
 const publicClient = createPublicClient({
   chain: mainnet,
-  transport: http('https://api.1inch.dev/web3/1', {
-    fetchOptions: {
-      headers: {
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_1INCH_API_KEY}`,
-      },
-    },
-  }),
+  transport: http('/api/1inch-rpc/1'),
 });
 
 export function useENS() {

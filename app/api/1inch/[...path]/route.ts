@@ -5,11 +5,12 @@ const API_KEY = process.env.NEXT_PUBLIC_1INCH_API_KEY;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
     // Reconstruct the path
-    const path = params.path.join('/');
+    const resolvedParams = await params;
+    const path = resolvedParams.path.join('/');
     
     // Get the search params from the request
     const searchParams = request.nextUrl.searchParams;
@@ -51,14 +52,17 @@ export async function GET(
   }
 }
 
-// Also support POST for swap transactions
+// Also support POST for price requests and swap transactions
 export async function POST(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const path = params.path.join('/');
+    const resolvedParams = await params;
+    const path = resolvedParams.path.join('/');
     const body = await request.json();
+    
+    console.log('1inch API Proxy POST:', { path, body });
     
     const url = new URL(`${ONEINCH_API_BASE}/${path}`);
     
@@ -73,12 +77,18 @@ export async function POST(
     });
 
     const data = await response.json();
+    
+    console.log('1inch API Proxy POST Response:', { status: response.status, data });
 
     return NextResponse.json(data, {
       status: response.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=59',
+      },
     });
   } catch (error) {
-    console.error('1inch API proxy error:', error);
+    console.error('1inch API proxy POST error:', error);
     return NextResponse.json(
       { error: 'Failed to post to 1inch API' },
       { status: 500 }

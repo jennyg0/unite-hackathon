@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { parseUnits, Address } from 'viem';
+import { writeContract } from '@wagmi/core';
 import { createGelatoAutomation } from '@/lib/gelato-automation';
 import { ethers } from 'ethers';
 // import { create1inchProvider, getUSDCBalance, formatBalance } from '@/lib/1inch-rpc'; // Disabled due to API issues
@@ -13,6 +14,9 @@ import {
   type DepositFrequency,
   APP_CONFIG
 } from '@/lib/constants';
+
+// For now, we'll use a placeholder - this would be set after deployment
+const AUTOMATED_DEPOSITS_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
 
 interface DepositConfig {
   amount: number;
@@ -167,7 +171,7 @@ export function useAutomatedDeposits() {
           }
         ],
         functionName: 'updateSchedule',
-        args: [(scheduleCount as bigint) - 1n, false], // Disable latest schedule
+        args: [BigInt(Number(scheduleCount) - 1), false], // Disable latest schedule
       });
     } catch (error) {
       console.error('Failed to disable automated deposits:', error);

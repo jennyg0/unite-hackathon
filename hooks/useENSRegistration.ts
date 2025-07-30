@@ -23,18 +23,12 @@ export function useENSRegistration() {
     commitment: `0x${string}`;
   } | null>(null);
 
-  // Create clients using 1inch RPC for mainnet (chain 1)
+  // Create clients using 1inch RPC proxy for mainnet (chain 1)
   const publicClient = createPublicClient({
     chain: mainnet,
-    transport: http('https://api.1inch.dev/web3/1', {
-      fetchOptions: {
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_1INCH_API_KEY}`,
-        },
-      },
-    }),
+    transport: http('/api/1inch-rpc/1'),
   });
-  console.log("Using 1inch RPC for ENS on mainnet")
+  console.log("Using 1inch RPC proxy for ENS on mainnet")
 
   // Check if name is available and get price
   const checkNameAndPrice = useCallback(async (name: string) => {
