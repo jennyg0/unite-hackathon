@@ -10,6 +10,7 @@
         "type-check": "tsc --noEmit"
     },
     "dependencies": {
+        "@1inch/cross-chain-sdk": "^0.1.15",
         "@gelatonetwork/automate-sdk": "^3.1.0",
         "@gelatonetwork/smartwallet": "^0.0.20",
         "@gelatonetwork/smartwallet-react-sdk": "^0.0.20",
