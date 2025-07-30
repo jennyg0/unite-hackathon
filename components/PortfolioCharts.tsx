@@ -24,6 +24,22 @@ import { usePrivy } from "@privy-io/react-auth";
 import { use1inchData } from "@/hooks/use1inchData";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 
+// Utility functions
+function formatPrice(price: number, symbol: string) {
+  if (symbol === 'USDC') return `$${price.toFixed(4)}`;
+  if (price > 1000) return `$${price.toFixed(0)}`;
+  if (price > 1) return `$${price.toFixed(2)}`;
+  return `$${price.toFixed(6)}`;
+}
+
+function formatChange(change: number, isPercent: boolean = false) {
+  const prefix = change >= 0 ? '+' : '';
+  if (isPercent) {
+    return `${prefix}${change.toFixed(2)}%`;
+  }
+  return `${prefix}$${Math.abs(change).toFixed(2)}`;
+}
+
 interface PortfolioChartsProps {
   tokens?: Array<{
     address: string;
@@ -217,20 +233,6 @@ export default function PortfolioCharts({ tokens }: PortfolioChartsProps) {
     return { change, changePercent };
   };
 
-  const formatPrice = (price: number, symbol: string) => {
-    if (symbol === 'USDC') return `$${price.toFixed(4)}`;
-    if (price > 1000) return `$${price.toFixed(0)}`;
-    if (price > 1) return `$${price.toFixed(2)}`;
-    return `$${price.toFixed(6)}`;
-  };
-
-  const formatChange = (change: number, isPercent: boolean = false) => {
-    const prefix = change >= 0 ? '+' : '';
-    if (isPercent) {
-      return `${prefix}${change.toFixed(2)}%`;
-    }
-    return `${prefix}$${Math.abs(change).toFixed(2)}`;
-  };
 
   if (isLoading) {
     return (
@@ -591,12 +593,4 @@ function IndividualCharts({ chartData }: { chartData: TokenChartData[] }) {
       ))}
     </motion.div>
   );
-}
-
-function formatChange(change: number, isPercent: boolean = false) {
-  const prefix = change >= 0 ? '+' : '';
-  if (isPercent) {
-    return `${prefix}${change.toFixed(2)}%`;
-  }
-  return `${prefix}$${Math.abs(change).toFixed(2)}`;
 }

@@ -19,7 +19,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { use1inchData } from "@/hooks/use1inchData";
-import { getOneInchAPI } from "@/lib/1inch-api";
+import { getOneInchAPI, WalletBalance } from "@/lib/1inch-api";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 import { 
   TokenBalanceSkeleton, 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import {
   DollarSign,
   Zap,
@@ -19,6 +19,9 @@ import { AaveService } from "@/lib/aave-service";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 import SmartStrategy from "@/components/SmartStrategy";
 import { type SmartStrategy as SmartStrategyType } from "@/lib/ai-yield-optimizer";
+import { aaveLive } from "@/lib/protocols/aave-live";
+import { compoundLive } from "@/lib/protocols/compound-live";
+import { yearnLive } from "@/lib/protocols/yearn-live";
 
 // Custom hook for count-up animation
 function useCountUp(end: number, duration: number = 2000, start: number = 0) {
@@ -61,11 +64,12 @@ interface SmartDepositProps {
 }
 
 export default function SmartDeposit({ onDepositComplete, onViewHistory }: SmartDepositProps) {
-  const { authenticated } = usePrivy();
+  const { authenticated, user } = usePrivy();
+  const { wallets } = useWallets();
   const { findBestRoutes, isLoading: fusionLoading } = useFusionSwap();
   const { setupAutomatedDeposits, isLoading: depositsLoading } = useAutomatedDeposits();
   
-  const [amount, setAmount] = useState<string>("100");
+  const [amount, setAmount] = useState<string>("10");
   const [depositType, setDepositType] = useState<"one-time" | "recurring">("one-time");
   const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly">("monthly");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -118,31 +122,74 @@ export default function SmartDeposit({ onDepositComplete, onViewHistory }: Smart
   const isLoading = fusionLoading || depositsLoading || isProcessing;
 
   const handleExecuteStrategy = async (strategy: SmartStrategyType) => {
+    console.log('🤖 Executing AI strategy:', strategy);
+    
+    if (!authenticated) {
+      alert('Please connect your wallet first');
+      return;
+    }
+    
+    if (!amount || parseFloat(amount) <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+
     setSelectedStrategy(strategy);
     setIsProcessing(true);
     setStatus("finding-route");
-    setStatusMessage(`Executing AI strategy across ${strategy.allocations.length} protocols...`);
+    setStatusMessage(`Analyzing optimal execution across ${strategy.allocations.length} protocols...`);
 
     try {
-      console.log('🤖 Executing AI strategy:', strategy);
+      const depositAmount = parseFloat(amount);
+      const userAddress = user?.wallet?.address;
       
-      // Simulate AI strategy execution
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      if (!userAddress) {
+        throw new Error('Wallet not connected');
+      }
+      
+      console.log(`💰 Executing AI strategy for $${depositAmount} from ${userAddress}`);
+      
+      // Import AI yield optimizer
+      const { aiYieldOptimizer } = await import('@/lib/ai-yield-optimizer');
+      
+      // Step 1: Execute seamless cross-chain strategy using AI + 1inch Fusion+
+      setStatus("finding-route");
+      setStatusMessage(`AI analyzing optimal execution across ${strategy.allocations.length} protocols...`);
+      
+      // Use the actual seamless cross-chain execution
+      const executionResult = await aiYieldOptimizer.executeSeamlessCrossChainStrategy(
+        userAddress,
+        137, // Assuming user is on Polygon for now
+        '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', // Polygon USDC
+        (depositAmount * 1000000).toString(), // Convert to 6 decimals
+        'balanced' // Risk profile
+      );
+      
+      if (!executionResult.success) {
+        throw new Error(executionResult.execution.message);
+      }
+      
+      setStatus("swapping");
+      setStatusMessage(`1inch Fusion+ routing: ${executionResult.execution.swapTxHash ? 'Completed' : 'In Progress'}...`);
+      
+      setStatus("depositing");
+      setStatusMessage(`Auto-depositing to optimal protocol...`);
+      
+      // The AI yield optimizer handles the complete execution
+      console.log('✅ AI Strategy Execution Result:', executionResult);
       
       setStatus("success");
-      setStatusMessage(
-        `AI strategy executed! Your $${amount} is now earning ${strategy.targetApy.toFixed(1)}% APY across ${strategy.allocations.length} protocols.`
-      );
+      setStatusMessage(executionResult.execution.message);
       
       // Trigger celebration effects
       setShowCelebration(true);
       startEarningsAnimation();
       
-      // Add AI strategy transaction to history
+      // Add real AI strategy transaction to history
       transactionHistory.addTransaction({
         type: 'ai_strategy',
         status: 'completed',
-        amount: (parseFloat(amount) * 1000000).toString(),
+        amount: executionResult.execution.finalAmount,
         amountUsd: parseFloat(amount),
         token: {
           symbol: 'USDC',
@@ -152,9 +199,9 @@ export default function SmartDeposit({ onDepositComplete, onViewHistory }: Smart
           logoURI: 'https://wallet-asset.matic.network/img/tokens/usdc.svg'
         },
         toChain: { id: 137, name: 'Multi-Chain' },
-        txHash: `0x${Math.random().toString(16).slice(2, 42)}`,
+        txHash: executionResult.execution.swapTxHash,
         description: `AI-optimized strategy: ${strategy.name}`,
-        apy: strategy.targetApy,
+        apy: executionResult.execution.targetAPY,
         protocols: strategy.allocations.map(a => a.opportunity.protocol)
       });
       
@@ -199,6 +246,8 @@ export default function SmartDeposit({ onDepositComplete, onViewHistory }: Smart
     try {
       const depositAmount = parseFloat(amount);
       console.log('💰 Processing deposit:', { depositAmount, depositType });
+      
+      let realTxHash = ''; // Store real transaction hash
 
       if (depositType === "one-time") {
         // One-time deposit with automatic cross-chain routing
@@ -212,21 +261,57 @@ export default function SmartDeposit({ onDepositComplete, onViewHistory }: Smart
         setStatusMessage(`Depositing $${amount} USDC to Aave V3 on Polygon...`);
         
         try {
+          // Get user's wallet address from Privy
+          const userAddress = user?.wallet?.address;
+          
+          if (!userAddress || !user.wallet) {
+            throw new Error('Wallet not connected');
+          }
+          
           // Get deposit transaction data
           const depositTx = aaveService.buildDepositTx(
             'USDC',
             (depositAmount * 1000000).toString(), // Convert to USDC decimals
-            '0x742d35Cc6634C0532925a3b8D1D5bbcF4A7A6666' // Placeholder address
+            userAddress // Use real user address
           );
           
           console.log('🏦 Aave deposit transaction:', depositTx);
           console.log(`💰 Depositing $${amount} USDC at ${currentAPY.toFixed(1)}% APY`);
           
-          // Simulate transaction processing
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // Execute REAL transaction using Privy wallet
+          setStatusMessage("Please approve the transaction in your wallet...");
+          
+          console.log('🚀 Executing REAL transaction:', depositTx);
+          
+          // Get the wallet provider
+          const wallet = wallets[0]; // Use first connected wallet
+          if (!wallet) {
+            throw new Error('No wallet connected');
+          }
+          
+          const provider = await wallet.getEthereumProvider();
+          
+          // Build transaction request
+          const transactionRequest = {
+            to: depositTx.to,
+            data: depositTx.data,
+            value: depositTx.value || '0x0',
+          };
+          
+          // Send the actual blockchain transaction
+          const transactionHash = await provider.request({
+            method: 'eth_sendTransaction',
+            params: [transactionRequest]
+          });
+          
+          realTxHash = transactionHash;
+          setStatusMessage(`Transaction confirmed! Hash: ${realTxHash.slice(0, 10)}...`);
+          
+          console.log('✅ REAL transaction executed with hash:', realTxHash);
+          
         } catch (aaveError) {
-          console.log('⚠️ Aave transaction failed, simulating:', aaveError);
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.error('❌ Real transaction failed:', aaveError);
+          throw aaveError; // Re-throw to handle in outer catch
         }
       } else {
         // Recurring deposits
@@ -274,7 +359,7 @@ export default function SmartDeposit({ onDepositComplete, onViewHistory }: Smart
           logoURI: 'https://wallet-asset.matic.network/img/tokens/usdc.svg'
         },
         toChain: { id: 137, name: 'Polygon' },
-        txHash: `0x${Math.random().toString(16).slice(2, 42)}`,
+        txHash: realTxHash || `0x${Math.random().toString(16).slice(2, 42)}`, // Use real hash if available
         description: depositType === "recurring" 
           ? `Automated ${frequency} deposit of $${amount}`
           : `One-time deposit of $${amount}`,
@@ -538,21 +623,11 @@ export default function SmartDeposit({ onDepositComplete, onViewHistory }: Smart
         </motion.button>
       </div>
 
-      {/* Conditional Rendering: AI Strategy or Simple Deposit */}
-      {showAIStrategy ? (
-        <SmartStrategy
-          amount={parseFloat(amount) || 1000}
-          asset="USDC"
-          riskProfile="balanced"
-          onExecuteStrategy={handleExecuteStrategy}
-        />
-      ) : (
-        <>
-          {/* Amount Input */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Deposit Amount
-            </label>
+      {/* Amount Input - Always show for both modes */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {showAIStrategy ? "Amount to Optimize" : "Deposit Amount"}
+        </label>
         <motion.div 
           className="relative"
           whileFocus={{ scale: 1.02 }}
@@ -573,11 +648,29 @@ export default function SmartDeposit({ onDepositComplete, onViewHistory }: Smart
                 setTimeout(startEarningsAnimation, 100);
               }
             }}
-            placeholder="100"
+            placeholder={showAIStrategy ? "10" : "100"}
+            min="1"
+            step="0.01"
             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-lg transition-all"
           />
         </motion.div>
+        {showAIStrategy && (
+          <p className="text-xs text-gray-500 mt-1">
+            💡 AI works better with amounts $10+ for optimal protocol selection
+          </p>
+        )}
       </div>
+
+      {/* Conditional Rendering: AI Strategy or Simple Deposit */}
+      {showAIStrategy ? (
+        <SmartStrategy
+          amount={parseFloat(amount) || 10}
+          asset="USDC"
+          riskProfile="balanced"
+          onExecuteStrategy={handleExecuteStrategy}
+        />
+      ) : (
+        <>
 
       {/* Frequency Selection for Recurring */}
       {depositType === "recurring" && (
