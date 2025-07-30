@@ -5,12 +5,14 @@ import { motion } from "framer-motion";
 import {
   DollarSign,
   History,
+  BarChart3,
   Menu,
   X,
 } from "lucide-react";
 
 type TabType =
   | "earnings"
+  | "portfolio"
   | "history";
 
 interface MobileNavigationProps {
@@ -26,6 +28,7 @@ export function MobileNavigation({
 
   const tabs = [
     { id: "earnings", label: "Earnings", icon: DollarSign },
+    { id: "portfolio", label: "Portfolio", icon: BarChart3 },
     { id: "history", label: "History", icon: History },
   ];
 

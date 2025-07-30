@@ -176,7 +176,7 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeTab === "earnings" && <EarningsTab />}
+          {activeTab === "earnings" && <EarningsTab onTabChange={setActiveTab} />}
           {activeTab === "portfolio" && <PortfolioTab />}
           {activeTab === "history" && <HistoryTab />}
         </motion.div>
@@ -189,7 +189,7 @@ export default function DashboardPage() {
 }
 
 // EARNINGS TAB - Main money dashboard with smart deposits
-function EarningsTab() {
+function EarningsTab({ onTabChange }: { onTabChange: (tab: TabType) => void }) {
   const { authenticated } = usePrivy();
 
   return (
@@ -214,7 +214,7 @@ function EarningsTab() {
             console.log(`Deposit complete: $${amount}, recurring: ${isRecurring}`);
             // This would update the user's balance and show success
           }}
-          onViewHistory={() => setActiveTab("history")}
+          onViewHistory={() => onTabChange("history")}
         />
       </motion.div>
 
@@ -227,7 +227,7 @@ function EarningsTab() {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
           <button 
-            onClick={() => setActiveTab("history")}
+            onClick={() => onTabChange("history")}
             className="text-green-600 hover:text-green-700 text-sm font-medium"
           >
             View All →

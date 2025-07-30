@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, BarChart3, ChartNoAxesGantt } from "lucide-react";
+import { TrendingUp, TrendingDown, BarChart3, BarChart } from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 import { transactionHistory } from "@/lib/transaction-history";
 
@@ -44,7 +44,7 @@ export default function MiniPortfolioChart({ className = "" }: MiniChartProps) {
       >
         <div className="flex items-center justify-center h-32">
           <div className="text-center">
-            <ChartNoAxesGantt className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+            <BarChart className="w-8 h-8 text-gray-400 mx-auto mb-2" />
             <p className="text-sm text-gray-600">No portfolio data yet</p>
             <p className="text-xs text-gray-500 mt-1">Start depositing to see your growth</p>
           </div>

@@ -391,10 +391,11 @@ export default function PortfolioCharts({ tokens }: PortfolioChartsProps) {
               <div>
                 <p className="text-sm text-yellow-700">Best Performer</p>
                 <p className="text-xl font-bold text-yellow-900">
-                  {chartData.reduce((best, current) => 
-                    current.changePercent > (best?.changePercent || -Infinity) ? current : best, 
-                    null
-                  )?.token.symbol || 'N/A'}
+                  {chartData.length > 0 
+                    ? chartData.reduce((best, current) => 
+                        current.changePercent > best.changePercent ? current : best
+                      ).token.symbol
+                    : 'N/A'}
                 </p>
               </div>
             </div>

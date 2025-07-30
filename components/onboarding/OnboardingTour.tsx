@@ -174,7 +174,7 @@ export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTou
           <div className="bg-gray-50 rounded-lg p-6">
             <h4 className="font-semibold mb-4">Recent Activity</h4>
             <div className="space-y-3">
-              {step.mockData.recentTransactions.map((tx, index) => (
+              {step.mockData.recentTransactions?.map((tx, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-white rounded border">
                   <div>
                     <p className="font-medium">{tx.type}</p>
@@ -184,7 +184,7 @@ export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTou
                     {tx.amount}
                   </p>
                 </div>
-              ))}
+              )) || <p className="text-gray-500">No recent transactions</p>}
             </div>
           </div>
         );
