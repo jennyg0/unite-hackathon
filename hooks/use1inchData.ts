@@ -118,6 +118,7 @@ export function use1inchData(options: Use1inchDataOptions = {}) {
       
       // Also fetch prices for tokens with balances
       const tokenAddresses = balances.map(b => b.token.address);
+      console.log('💰 Fetching prices for tokens:', tokenAddresses);
       if (tokenAddresses.length > 0) {
         await fetchTokenPrices(tokenAddresses);
       }
@@ -196,6 +197,54 @@ export function use1inchData(options: Use1inchDataOptions = {}) {
     }
   }, [api, setLoadingState, setErrorState]);
 
+  // Get portfolio overview
+  const getPortfolioOverview = useCallback(async (walletAddress: string) => {
+    setLoadingState('portfolio', true);
+    setErrorState('portfolio', '');
+    
+    try {
+      const portfolio = await api.getPortfolioOverview(walletAddress);
+      return portfolio;
+    } catch (err) {
+      setErrorState('portfolio', err instanceof Error ? err.message : 'Failed to fetch portfolio');
+      return null;
+    } finally {
+      setLoadingState('portfolio', false);
+    }
+  }, [api, setLoadingState, setErrorState]);
+
+  // Get token details
+  const getTokenDetails = useCallback(async (tokenAddress: string) => {
+    setLoadingState(`details-${tokenAddress}`, true);
+    setErrorState(`details-${tokenAddress}`, '');
+    
+    try {
+      const details = await api.getTokenDetails(tokenAddress);
+      return details;
+    } catch (err) {
+      setErrorState(`details-${tokenAddress}`, err instanceof Error ? err.message : 'Failed to fetch token details');
+      return null;
+    } finally {
+      setLoadingState(`details-${tokenAddress}`, false);
+    }
+  }, [api, setLoadingState, setErrorState]);
+
+  // Get transaction history
+  const getTransactionHistory = useCallback(async (walletAddress: string, limit: number = 100) => {
+    setLoadingState('history', true);
+    setErrorState('history', '');
+    
+    try {
+      const history = await api.getTransactionHistory(walletAddress, limit);
+      return history;
+    } catch (err) {
+      setErrorState('history', err instanceof Error ? err.message : 'Failed to fetch transaction history');
+      return [];
+    } finally {
+      setLoadingState('history', false);
+    }
+  }, [api, setLoadingState, setErrorState]);
+
   // Auto-refresh effect
   useEffect(() => {
     if (!autoRefresh) return;
@@ -256,6 +305,9 @@ export function use1inchData(options: Use1inchDataOptions = {}) {
     getQuote,
     getTokenMetadata,
     getPriceChart,
+    getPortfolioOverview,
+    getTokenDetails,
+    getTransactionHistory,
     
     // Utilities
     getTokenPrice: (tokenAddress: string) => prices[tokenAddress]?.price || 0,
