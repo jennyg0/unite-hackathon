@@ -13,7 +13,6 @@ import {
   type RegistrationState,
   type ENSPrice,
 } from '@/lib/ens-registration';
-
 export function useENSRegistration() {
   const { user, sendTransaction } = usePrivy();
   const [state, setState] = useState<RegistrationState>({ step: 'idle' });
@@ -24,11 +23,18 @@ export function useENSRegistration() {
     commitment: `0x${string}`;
   } | null>(null);
 
-  // Create clients
+  // Create clients using 1inch RPC for mainnet (chain 1)
   const publicClient = createPublicClient({
     chain: mainnet,
-    transport: http(`https://eth-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_KEY || 'demo'}`),
+    transport: http('https://api.1inch.dev/web3/1', {
+      fetchOptions: {
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_1INCH_API_KEY}`,
+        },
+      },
+    }),
   });
+  console.log("Using 1inch RPC for ENS on mainnet")
 
   // Check if name is available and get price
   const checkNameAndPrice = useCallback(async (name: string) => {

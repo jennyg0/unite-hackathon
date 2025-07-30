@@ -3,11 +3,16 @@ import { usePrivy } from '@privy-io/react-auth';
 import { createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
 import { normalize } from 'viem/ens';
-
-// Create a public client for ENS lookups on mainnet
+// Create a public client for ENS lookups on mainnet using 1inch RPC
 const publicClient = createPublicClient({
   chain: mainnet,
-  transport: http(`https://eth-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_KEY || 'demo'}`),
+  transport: http('https://api.1inch.dev/web3/1', {
+    fetchOptions: {
+      headers: {
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_1INCH_API_KEY}`,
+      },
+    },
+  }),
 });
 
 export function useENS() {
