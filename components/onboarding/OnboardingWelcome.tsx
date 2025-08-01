@@ -7,14 +7,17 @@ import {
   Calculator,
   TrendingUp,
   Shield,
+  Target,
+  Zap,
 } from "lucide-react";
 
 interface OnboardingWelcomeProps {
   onNext: () => void;
   onSkip: () => void;
+  onShowCalculator?: () => void;
 }
 
-export function OnboardingWelcome({ onNext, onSkip }: OnboardingWelcomeProps) {
+export function OnboardingWelcome({ onNext, onSkip, onShowCalculator }: OnboardingWelcomeProps) {
   return (
     <div className="text-center py-8 md:py-12">
       {/* Hero Section */}
@@ -43,47 +46,89 @@ export function OnboardingWelcome({ onNext, onSkip }: OnboardingWelcomeProps) {
         </p>
       </motion.div>
 
-      {/* Features Preview */}
+      {/* Prominent Smart Calculator Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 md:mb-12"
+        className="mb-8 md:mb-12"
       >
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <Calculator className="w-6 h-6 text-blue-600" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Smart Calculator
-          </h3>
-          <p className="text-gray-600 text-sm">
-            Calculate your financial freedom number using the proven 4% rule
-          </p>
-        </div>
+        <div className="max-w-4xl mx-auto">
+          {/* Featured Calculator Card */}
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-8 border-2 border-blue-200 mb-8">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Calculator className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
+                🎯 Financial Freedom Calculator
+              </h2>
+              <p className="text-lg text-gray-700 mb-6 max-w-2xl mx-auto">
+                Discover exactly how much faster you can reach financial freedom with DeFi vs traditional banking. 
+                See the <span className="font-semibold text-blue-600">years you'll save</span> and 
+                <span className="font-semibold text-purple-600"> extra compound interest you'll earn!</span>
+              </p>
+              
+              {/* Calculator Features */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white/70 rounded-lg p-4">
+                  <Target className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                  <h4 className="font-semibold text-gray-900 mb-1">Auto-Calculate Years</h4>
+                  <p className="text-sm text-gray-600">No guessing - see exactly when you'll be free</p>
+                </div>
+                <div className="bg-white/70 rounded-lg p-4">
+                  <TrendingUp className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                  <h4 className="font-semibold text-gray-900 mb-1">DeFi vs Bank</h4>
+                  <p className="text-sm text-gray-600">Compare 6.5% DeFi yields vs 0.5% bank rates</p>
+                </div>
+                <div className="bg-white/70 rounded-lg p-4">
+                  <Zap className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+                  <h4 className="font-semibold text-gray-900 mb-1">Compound Magic</h4>
+                  <p className="text-sm text-gray-600">See how your money compounds over time</p>
+                </div>
+              </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <TrendingUp className="w-6 h-6 text-green-600" />
+              {onShowCalculator && (
+                <button
+                  onClick={onShowCalculator}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-lg px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl mb-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <Calculator className="w-5 h-5" />
+                    <span>Try Financial Freedom Calculator</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </div>
+                </button>
+              )}
+            </div>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            DeFi Strategies
-          </h3>
-          <p className="text-gray-600 text-sm">
-            Access higher yields than traditional savings accounts
-          </p>
-        </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-          <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-6 h-6 text-purple-600" />
+          {/* Supporting Features */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="w-6 h-6 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                DeFi Strategies
+              </h3>
+              <p className="text-gray-600 text-sm">
+                Access 6-15% yields through battle-tested DeFi protocols like Aave, Compound, and Yearn
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-6 h-6 text-purple-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Secure & Simple
+              </h3>
+              <p className="text-gray-600 text-sm">
+                AI-powered optimization with full custody control. Your keys, your crypto.
+              </p>
+            </div>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Secure & Simple
-          </h3>
-          <p className="text-gray-600 text-sm">
-            We handle the complexity while you focus on your goals
-          </p>
         </div>
       </motion.div>
 
@@ -92,22 +137,27 @@ export function OnboardingWelcome({ onNext, onSkip }: OnboardingWelcomeProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.4 }}
-        className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+        className="flex flex-col gap-4 justify-center items-center"
       >
-        <button
-          onClick={onNext}
-          className="btn-primary text-lg px-8 py-4 flex items-center space-x-2"
-        >
-          <span>Get Started</span>
-          <ArrowRight className="w-5 h-5" />
-        </button>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <button
+            onClick={onNext}
+            className="bg-green-600 hover:bg-green-700 text-white text-lg px-8 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl"
+          >
+            <Sparkles className="w-5 h-5" />
+            <span>Start Guided Setup</span>
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </div>
 
-        <button
-          onClick={onSkip}
-          className="text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          I'll explore on my own
-        </button>
+        <div className="text-center">
+          <button
+            onClick={onSkip}
+            className="text-gray-500 hover:text-gray-700 transition-colors text-sm"
+          >
+            I'll explore on my own
+          </button>
+        </div>
       </motion.div>
 
       {/* Trust Indicators */}
