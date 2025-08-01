@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
+  // Remove appDir from experimental as it's now stable in Next.js 15+
   images: {
     domains: ['assets.coingecko.com', 'raw.githubusercontent.com'],
   },

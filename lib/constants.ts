@@ -57,10 +57,10 @@ export const TOKENS = {
 
 // Deposit Frequencies (in seconds)
 export const DEPOSIT_FREQUENCIES = {
-  daily: 86400n,        // 1 day (perfect for hackathon testing!)
-  weekly: 604800n,      // 7 days
-  'bi-weekly': 1209600n, // 14 days  
-  monthly: 2592000n,    // 30 days (approximate)
+  daily: BigInt(86400),        // 1 day (perfect for hackathon testing!)
+  weekly: BigInt(604800),      // 7 days
+  'bi-weekly': BigInt(1209600), // 14 days  
+  monthly: BigInt(2592000),    // 30 days (approximate)
 } as const;
 
 // Gelato Configuration

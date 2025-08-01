@@ -17,11 +17,11 @@ baseSepolia = "https://sepolia.base.org"
 
 # Etherscan API keys for verification
 [etherscan]
-mainnet = { key = "${ETHERSCAN_API_KEY}" }
-polygon = { key = "${POLYGONSCAN_API_KEY}" }
-polygonAmoy = { key = "${POLYGONSCAN_API_KEY}" }
-base = { key = "${BASESCAN_API_KEY}" }
-baseSepolia = { key = "${BASESCAN_API_KEY}" }
+mainnet = { key = "${ETHERSCAN_API_KEY}", url = "https://api.etherscan.io/api" }
+polygon = { key = "dummy", url = "https://api.polygonscan.com/api" }
+polygonAmoy = { key = "dummy", url = "https://api-amoy.polygonscan.com/api" }
+base = { key = "${BASESCAN_API_KEY}", url = "https://api.basescan.org/api" }
+baseSepolia = { key = "${BASESCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }
 
 # Gas reporting
 [fmt]
