@@ -30,8 +30,10 @@ import PortfolioCharts from "@/components/PortfolioCharts";
 import { FinancialGoals } from "@/components/FinancialGoals";
 import { LoadingDots } from "@/components/ui/LoadingSkeletons";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import EducationCenter from "@/components/EducationCenter";
+import MilestoneNFTDisplay from "@/components/MilestoneNFTDisplay";
 
-type TabType = "portfolio" | "history";
+type TabType = "portfolio" | "history" | "learn" | "achievements";
 
 export default function DashboardPage() {
   const { authenticated, ready } = usePrivy();
@@ -147,9 +149,7 @@ export default function DashboardPage() {
               <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-green-500 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-semibold text-gray-900">
-                BYOB
-              </span>
+              <span className="text-xl font-semibold text-gray-900">BYOB</span>
             </div>
             <ConnectWallet />
           </div>
@@ -183,6 +183,8 @@ export default function DashboardPage() {
               }
             />
           )}
+          {activeTab === "learn" && <LearnTab />}
+          {activeTab === "achievements" && <AchievementsTab />}
           {activeTab === "history" && <HistoryTab />}
         </motion.div>
 
@@ -363,6 +365,61 @@ function MainPortfolioView({
         )}
       </motion.div>
     </div>
+  );
+}
+
+// LEARN TAB - Educational quizzes and content
+function LearnTab() {
+  return (
+    <motion.div
+      className="max-w-6xl mx-auto"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* <div className="text-center mb-8">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+          DeFi Education Hub
+        </h2>
+        <p className="text-gray-600">
+          Master DeFi concepts and earn rewards for learning
+        </p>
+      </div> */}
+
+      <ErrorBoundary>
+        <EducationCenter />
+      </ErrorBoundary>
+    </motion.div>
+  );
+}
+
+// ACHIEVEMENTS TAB - Milestone NFTs and progress
+function AchievementsTab() {
+  return (
+    <motion.div
+      className="max-w-6xl mx-auto"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <div className="text-center mb-8">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+          Your BYOB Achievements
+        </h2>
+        <p className="text-gray-600">
+          Earn milestone NFTs for your financial journey milestones
+        </p>
+      </div>
+
+      <ErrorBoundary>
+        <MilestoneNFTDisplay
+          onMilestoneClick={(milestone) => {
+            console.log("Milestone clicked:", milestone);
+            // Here you could show a detailed view of the milestone NFT
+          }}
+        />
+      </ErrorBoundary>
+    </motion.div>
   );
 }
 

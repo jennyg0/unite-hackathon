@@ -8,11 +8,15 @@ import {
   BarChart3,
   Menu,
   X,
+  BookOpen,
+  Award,
 } from "lucide-react";
 
 type TabType =
   | "portfolio"
-  | "history";
+  | "history"
+  | "learn"
+  | "achievements";
 
 interface MobileNavigationProps {
   activeTab: TabType;
@@ -27,13 +31,17 @@ export function MobileNavigation({
 
   const tabs = [
     { id: "portfolio", label: "Portfolio", icon: BarChart3 },
+    { id: "learn", label: "Learn", icon: BookOpen },
+    { id: "achievements", label: "Achievements", icon: Award },
     { id: "history", label: "History", icon: History },
   ];
+
+  console.log('MobileNavigation tabs:', tabs.map(t => t.label));
 
   return (
     <>
       {/* Desktop Navigation */}
-      <div className="hidden md:block bg-white border-b border-gray-200">
+      <div className="block bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             {tabs.map((tab) => {
@@ -59,7 +67,7 @@ export function MobileNavigation({
 
       {/* Mobile Bottom Navigation */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-        <div className="flex justify-around">
+        <div className="flex justify-around overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -67,7 +75,7 @@ export function MobileNavigation({
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id as TabType)}
-                className={`flex flex-col items-center py-3 px-2 min-w-0 flex-1 transition-colors duration-200 ${
+                className={`flex flex-col items-center py-3 px-1 min-w-0 flex-1 flex-shrink-0 transition-colors duration-200 ${
                   isActive
                     ? "text-green-600"
                     : "text-gray-500 hover:text-gray-700"
@@ -76,7 +84,7 @@ export function MobileNavigation({
                 <Icon
                   className={`w-5 h-5 mb-1 ${isActive ? "text-green-600" : ""}`}
                 />
-                <span className="text-xs font-medium truncate">
+                <span className="text-xs font-medium truncate max-w-full">
                   {tab.label}
                 </span>
                 {isActive && (
