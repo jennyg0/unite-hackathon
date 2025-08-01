@@ -74,15 +74,21 @@ export function use1inchData(options: Use1inchDataOptions = {}) {
     setErrorState('prices', '');
     
     try {
+      console.log('💵 Fetching prices for tokens:', tokenAddresses);
       const priceData = await api.getTokenPrices(tokenAddresses);
+      console.log('💵 Received price data:', priceData.length, 'prices');
+      
       const priceMap = priceData.reduce((acc, price) => {
         acc[price.token] = price;
         return acc;
       }, {} as Record<string, PriceData>);
       
       setPrices(prev => ({ ...prev, ...priceMap }));
+      console.log('💵 Updated price map with', Object.keys(priceMap).length, 'new prices');
     } catch (err) {
+      console.error('❌ Failed to fetch token prices:', err);
       setErrorState('prices', err instanceof Error ? err.message : 'Failed to fetch prices');
+      // Don't throw, just log the error and continue
     } finally {
       setLoadingState('prices', false);
     }
@@ -113,17 +119,27 @@ export function use1inchData(options: Use1inchDataOptions = {}) {
     setErrorState('balances', '');
     
     try {
+      console.log('🔍 Fetching wallet balances for:', walletAddress);
       const balances = await api.getWalletBalances(walletAddress);
+      console.log('✅ Received balances:', balances.length);
       setWalletBalances(balances);
       
       // Also fetch prices for tokens with balances
-      const tokenAddresses = balances.map(b => b.token.address);
+      const tokenAddresses = balances.map(b => b.token.address).filter(Boolean);
       console.log('💰 Fetching prices for tokens:', tokenAddresses);
       if (tokenAddresses.length > 0) {
-        await fetchTokenPrices(tokenAddresses);
+        try {
+          await fetchTokenPrices(tokenAddresses);
+        } catch (priceError) {
+          console.warn('⚠️ Failed to fetch prices, but balances are available:', priceError);
+          // Don't fail the entire operation if only prices fail
+        }
       }
     } catch (err) {
+      console.error('❌ Failed to fetch wallet balances:', err);
       setErrorState('balances', err instanceof Error ? err.message : 'Failed to fetch balances');
+      // Set empty array to prevent undefined errors
+      setWalletBalances([]);
     } finally {
       setLoadingState('balances', false);
     }

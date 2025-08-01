@@ -225,9 +225,9 @@ let chartsAPI: OneInchCharts | null = null;
 
 export function getOneInchCharts(): OneInchCharts {
   if (!chartsAPI) {
-    const apiKey = process.env.NEXT_PUBLIC_1INCH_API_KEY;
+    const apiKey = process.env.ONEINCH_API_KEY;
     if (!apiKey) {
-      throw new Error('1inch API key not found. Please set NEXT_PUBLIC_1INCH_API_KEY');
+      throw new Error('1inch API key not found. Please set ONEINCH_API_KEY');
     }
     chartsAPI = new OneInchCharts(apiKey);
   }

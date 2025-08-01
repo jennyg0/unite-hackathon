@@ -148,9 +148,9 @@ class OneInchRPC {
 
 // Create providers for different chains using 1inch RPC
 export function create1inchProvider(chainId: number = 1): ethers.JsonRpcProvider {
-  const apiKey = process.env.NEXT_PUBLIC_1INCH_API_KEY;
+  const apiKey = process.env.ONEINCH_API_KEY;
   if (!apiKey) {
-    throw new Error('1inch API key not found. Please set NEXT_PUBLIC_1INCH_API_KEY');
+    throw new Error('1inch API key not found. Please set ONEINCH_API_KEY');
   }
 
   const rpcUrl = `https://api.1inch.dev/web3/${chainId}`;
@@ -178,9 +178,9 @@ const rpcInstances: Record<number, OneInchRPC> = {};
 
 export function get1inchRPC(chainId: number = 1): OneInchRPC {
   if (!rpcInstances[chainId]) {
-    const apiKey = process.env.NEXT_PUBLIC_1INCH_API_KEY;
+    const apiKey = process.env.ONEINCH_API_KEY;
     if (!apiKey) {
-      throw new Error('1inch API key not found. Please set NEXT_PUBLIC_1INCH_API_KEY');
+      throw new Error('1inch API key not found. Please set ONEINCH_API_KEY');
     }
     rpcInstances[chainId] = new OneInchRPC(apiKey, chainId);
   }

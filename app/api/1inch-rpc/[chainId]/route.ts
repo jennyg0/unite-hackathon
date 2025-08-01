@@ -9,7 +9,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ chainId: string }> }
 ) {
-  const apiKey = process.env.NEXT_PUBLIC_1INCH_API_KEY;
+  const apiKey = process.env.ONEINCH_API_KEY;
   
   if (!apiKey) {
     return NextResponse.json(

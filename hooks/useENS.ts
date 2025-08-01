@@ -4,10 +4,11 @@ import { createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
 import { normalize } from 'viem/ens';
 // Create a public client for ENS lookups using our 1inch proxy
-const publicClient = createPublicClient({
+// Only create client if we're in browser environment
+const publicClient = typeof window !== 'undefined' ? createPublicClient({
   chain: mainnet,
   transport: http('/api/1inch-rpc/1'),
-});
+}) : null;
 
 export function useENS() {
   const { user } = usePrivy();
@@ -30,7 +31,7 @@ export function useENS() {
         }
 
         // Then check the actual blockchain for reverse resolution
-        if (!hasCheckedChain) {
+        if (!hasCheckedChain && publicClient) {
           const name = await publicClient.getEnsName({
             address: user.wallet.address as `0x${string}`,
           });
@@ -69,6 +70,8 @@ export function useENS() {
   };
 
   const checkAvailability = async (name: string): Promise<boolean> => {
+    if (!publicClient) return false;
+    
     try {
       const normalizedName = normalize(name);
       const resolver = await publicClient.getEnsResolver({ name: `${normalizedName}.eth` });

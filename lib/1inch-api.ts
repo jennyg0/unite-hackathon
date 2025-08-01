@@ -1,4 +1,5 @@
-const BASE_URL = 'https://api.1inch.dev';
+// Use our API proxy instead of direct 1inch API calls
+const BASE_URL = '/api/1inch';
 
 export interface TokenInfo {
   address: string;
@@ -78,48 +79,29 @@ export interface ChartResponse {
 }
 
 class OneInchAPI {
-  private apiKey: string;
   private chainId: number;
 
-  constructor(apiKey: string, chainId: number = 137) { // Default to Polygon
-    this.apiKey = apiKey;
+  constructor(chainId: number = 137) { // Default to Polygon - no API key needed client-side
     this.chainId = chainId;
   }
 
   private async requestPost(endpoint: string, body: Record<string, any> = {}) {
-    // Use proxy in browser to avoid CORS issues
-    const isBrowser = typeof window !== 'undefined';
-    let url: URL;
-    
-    if (isBrowser) {
-      // In browser, use relative URL with current origin
-      url = new URL(`/api/1inch${endpoint}`, window.location.origin);
-    } else {
-      // On server, use direct 1inch API
-      url = new URL(`${BASE_URL}${endpoint}`);
-    }
+    // Always use our API proxy to keep API key secure
+    const url = new URL(`/api/1inch${endpoint}`, typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
 
     console.log('1inch API POST Request:', {
       endpoint,
       url: url.toString(),
-      isBrowser,
       body
     });
 
     try {
-      const headers: HeadersInit = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      };
-      
-      // Only add Authorization header when not using proxy (server-side)
-      if (!isBrowser) {
-        headers['Authorization'] = `Bearer ${this.apiKey}`;
-      }
-
       const response = await fetch(url.toString(), { 
         method: 'POST',
-        headers,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(body)
       });
 
@@ -139,17 +121,8 @@ class OneInchAPI {
   }
 
   private async request(endpoint: string, params: Record<string, any> = {}) {
-    // Use proxy in browser to avoid CORS issues
-    const isBrowser = typeof window !== 'undefined';
-    let url: URL;
-    
-    if (isBrowser) {
-      // In browser, use relative URL with current origin
-      url = new URL(`/api/1inch${endpoint}`, window.location.origin);
-    } else {
-      // On server, use direct 1inch API
-      url = new URL(`${BASE_URL}${endpoint}`);
-    }
+    // Always use our API proxy to keep API key secure
+    const url = new URL(`/api/1inch${endpoint}`, typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
     
     // Add query parameters
     Object.entries(params).forEach(([key, value]) => {
@@ -161,21 +134,15 @@ class OneInchAPI {
     console.log('1inch API Request:', {
       endpoint,
       url: url.toString(),
-      isBrowser,
       params
     });
 
     try {
-      const headers: HeadersInit = {
-        'Accept': 'application/json',
-      };
-      
-      // Only add Authorization header when not using proxy (server-side)
-      if (!isBrowser) {
-        headers['Authorization'] = `Bearer ${this.apiKey}`;
-      }
-
-      const response = await fetch(url.toString(), { headers });
+      const response = await fetch(url.toString(), { 
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -868,12 +835,9 @@ class OneInchAPI {
 let oneInchAPI: OneInchAPI | null = null;
 
 export function getOneInchAPI(chainId: number = 137): OneInchAPI {
-  if (!oneInchAPI) {
-    const apiKey = process.env.NEXT_PUBLIC_1INCH_API_KEY;
-    if (!apiKey) {
-      throw new Error('1inch API key not found. Please set NEXT_PUBLIC_1INCH_API_KEY');
-    }
-    oneInchAPI = new OneInchAPI(apiKey, chainId);
+  // No API key needed client-side - using secure proxy
+  if (!oneInchAPI || oneInchAPI['chainId'] !== chainId) {
+    oneInchAPI = new OneInchAPI(chainId);
   }
   return oneInchAPI;
 }

@@ -59,7 +59,7 @@ npm run dev
 
 Create a `.env.local` file with:
 ```
-NEXT_PUBLIC_1INCH_API_KEY=your_1inch_api_key
+ONEINCH_API_KEY=your_1inch_api_key
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_project_id
 ```
 

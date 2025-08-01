@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const apiKey = process.env.NEXT_PUBLIC_1INCH_API_KEY;
+    const apiKey = process.env.ONEINCH_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
         { error: '1inch API key not configured' },
@@ -75,7 +75,7 @@ export async function POST(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const apiKey = process.env.NEXT_PUBLIC_1INCH_API_KEY;
+    const apiKey = process.env.ONEINCH_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
         { error: '1inch API key not configured' },

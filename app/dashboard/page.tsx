@@ -29,6 +29,7 @@ import { useOnboarding } from "@/components/OnboardingProvider";
 import PortfolioCharts from "@/components/PortfolioCharts";
 import { FinancialGoals } from "@/components/FinancialGoals";
 import { LoadingDots } from "@/components/ui/LoadingSkeletons";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 type TabType = "portfolio" | "history";
 
@@ -273,7 +274,9 @@ function MainPortfolioView({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <WalletBalanceV2 />
+        <ErrorBoundary>
+          <WalletBalanceV2 />
+        </ErrorBoundary>
       </motion.div>
 
       {/* Primary Action - Big Deposit Button */}
@@ -304,7 +307,9 @@ function MainPortfolioView({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
       >
-        <PortfolioCharts />
+        <ErrorBoundary>
+          <PortfolioCharts />
+        </ErrorBoundary>
       </motion.div>
 
       {/* Transaction History - Collapsible Section */}
@@ -351,7 +356,9 @@ function MainPortfolioView({
             exit={{ opacity: 0, height: 0 }}
             className="mt-4"
           >
-            <TransactionHistory limit={10} showSummary={true} />
+            <ErrorBoundary>
+              <TransactionHistory limit={10} showSummary={true} />
+            </ErrorBoundary>
           </motion.div>
         )}
       </motion.div>
