@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 
 type TabType =
-  | "earnings"
   | "portfolio"
   | "history";
 
@@ -27,7 +26,6 @@ export function MobileNavigation({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const tabs = [
-    { id: "earnings", label: "Earnings", icon: DollarSign },
     { id: "portfolio", label: "Portfolio", icon: BarChart3 },
     { id: "history", label: "History", icon: History },
   ];

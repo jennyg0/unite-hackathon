@@ -103,34 +103,19 @@ export default function TokenSwapV2() {
     }
 
     try {
-      // ERC20 ABI for allowance function
-      const abi = [
-        {
-          name: "allowance",
-          type: "function",
-          stateMutability: "view",
-          inputs: [
-            { name: "owner", type: "address" },
-            { name: "spender", type: "address" },
-          ],
-          outputs: [{ name: "", type: "uint256" }],
-        },
-      ] as const;
+      // Use 1inch RPC instead of viem publicClient
+      const { get1inchRPC } = await import('@/lib/1inch-rpc');
+      const oneInchRPC = get1inchRPC(chainId);
+      
+      // Build allowance call data: allowance(owner, spender)
+      const allowanceData = `0xdd62ed3e${address.slice(2).padStart(64, '0')}${spenderAddress.slice(2).padStart(64, '0')}`;
+      
+      const allowanceResult = await oneInchRPC.call({
+        to: tokenAddress,
+        data: allowanceData
+      }, 'latest');
 
-      // Create public client to read contract
-      const publicClient = createPublicClient({
-        chain: chainId === 137 ? polygon : chainId === 8453 ? base : mainnet,
-        transport: http(),
-      });
-
-      const allowance = await publicClient.readContract({
-        address: tokenAddress as `0x${string}`,
-        abi,
-        functionName: "allowance",
-        args: [address as `0x${string}`, spenderAddress as `0x${string}`],
-      });
-
-      return allowance;
+      return BigInt(allowanceResult);
     } catch (error) {
       console.error("Failed to check allowance:", error);
       return BigInt(0);

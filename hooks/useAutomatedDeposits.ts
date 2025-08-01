@@ -4,7 +4,7 @@ import { parseUnits, Address } from 'viem';
 import { writeContract } from '@wagmi/core';
 import { createGelatoAutomation } from '@/lib/gelato-automation';
 import { ethers } from 'ethers';
-// import { create1inchProvider, getUSDCBalance, formatBalance } from '@/lib/1inch-rpc'; // Disabled due to API issues
+import { get1inchRPC, getUSDCBalance, formatBalance } from '@/lib/1inch-rpc';
 import { 
   CONTRACTS, 
   DEPOSIT_FREQUENCIES, 
