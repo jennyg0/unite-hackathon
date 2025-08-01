@@ -107,15 +107,13 @@ const MILESTONE_TRACKER_ABI = [
   },
 ];
 
-// Contract addresses per chain
-const CONTRACT_ADDRESSES: Record<number, { nft: Address; tracker: Address }> = {
+// Contract addresses per chain - Only need ONE NFT collection
+const CONTRACT_ADDRESSES: Record<number, { nft: Address }> = {
   137: {
-    nft: '0x...' as Address,
-    tracker: '0x...' as Address,
+    nft: '0x0000000000000000000000000000000000000000' as Address, // Replace with your deployed NFT contract
   },
   8453: {
-    nft: '0x...' as Address,
-    tracker: '0x...' as Address,
+    nft: '0x0000000000000000000000000000000000000000' as Address,
   },
 };
 
@@ -158,7 +156,6 @@ export class MilestoneSDK {
   private walletClient: any;
   private chainId: number;
   private nftAddress: Address;
-  private trackerAddress: Address;
 
   constructor(chainId: number = 137) {
     this.chainId = chainId;
@@ -168,7 +165,6 @@ export class MilestoneSDK {
     }
     
     this.nftAddress = addresses.nft;
-    this.trackerAddress = addresses.tracker;
     
     const chain = chainId === 137 ? polygon : chainId === 8453 ? base : mainnet;
     
@@ -182,119 +178,74 @@ export class MilestoneSDK {
     this.walletClient = walletClient;
   }
 
-  // Get user's milestone data
+  // Get user's milestone data using 1inch NFT API
   async getUserData(user: Address): Promise<UserMilestoneData> {
-    // Get basic user data from tracker
-    const userData = await this.publicClient.readContract({
-      address: this.trackerAddress,
-      abi: MILESTONE_TRACKER_ABI,
-      functionName: 'userData',
-      args: [user],
-    });
-
-    // Get user's NFT token IDs
-    const tokenIds = await this.publicClient.readContract({
-      address: this.nftAddress,
-      abi: MILESTONE_NFT_ABI,
-      functionName: 'getUserMilestones',
-      args: [user],
-    });
-
-    // Fetch metadata for each NFT
-    const milestones: Milestone[] = await Promise.all(
-      tokenIds.map(async (tokenId: bigint) => {
-        const uri = await this.publicClient.readContract({
-          address: this.nftAddress,
-          abi: MILESTONE_NFT_ABI,
-          functionName: 'tokenURI',
-          args: [tokenId],
-        });
-
-        // Parse base64 JSON metadata
-        const metadata = this.parseTokenURI(uri);
-        const info = this.getMilestoneInfo(this.getMilestoneTypeFromName(metadata.name));
+    try {
+      // Fetch user's NFTs from our collection using 1inch API
+      const nftResponse = await fetch(`/api/1inch/nft/v2/byaddress/${user}?contractAddress=${this.nftAddress}&chainId=${this.chainId}`);
+      
+      let milestones: Milestone[] = [];
+      
+      if (nftResponse.ok) {
+        const nftData = await nftResponse.json();
         
-        return {
-          id: Number(tokenId),
-          type: this.getMilestoneTypeFromName(metadata.name),
-          value: metadata.attributes?.find((a: any) => a.trait_type === 'Value')?.value || 0,
-          title: metadata.name,
-          description: metadata.description,
-          timestamp: new Date(Number(metadata.attributes?.find((a: any) => a.trait_type === 'Achievement Date')?.value || 0) * 1000),
-          imageUrl: metadata.image,
-          emoji: info.emoji,
-        };
-      })
-    );
+        // Parse milestone NFTs from the response
+        milestones = (nftData.result || [])
+          .filter((token: any) => token.contractAddress?.toLowerCase() === this.nftAddress.toLowerCase())
+          .map((token: any) => {
+            const info = this.getMilestoneInfo(this.getMilestoneTypeFromName(token.name || ''));
+            return {
+              id: Number(token.tokenId),
+              type: this.getMilestoneTypeFromName(token.name || ''),
+              value: token.metadata?.attributes?.find((a: any) => a.trait_type === 'Value')?.value || 0,
+              title: token.name || 'Milestone NFT',
+              description: token.metadata?.description || 'Achievement unlocked!',
+              timestamp: new Date(Number(token.metadata?.attributes?.find((a: any) => a.trait_type === 'Achievement Date')?.value || Date.now() / 1000) * 1000),
+              imageUrl: token.metadata?.image,
+              emoji: info.emoji,
+            };
+          });
+      }
 
-    return {
-      totalDeposited: Number(userData[0]) / 1e6, // Convert from USDC decimals
-      firstDepositTime: userData[1] > 0 ? new Date(Number(userData[1]) * 1000) : null,
-      lastDepositTime: userData[2] > 0 ? new Date(Number(userData[2]) * 1000) : null,
-      depositStreak: Number(userData[3]),
-      longestStreak: Number(userData[4]),
-      referralCount: Number(userData[5]),
-      educationProgress: Number(userData[6]),
-      financialFreedomTarget: Number(userData[7]) / 1e6,
-      milestones,
-    };
+      // For now, return mock progress data - this could come from your backend/database
+      // or be calculated based on the earned NFTs
+      return {
+        totalDeposited: 0, // Calculate from deposit NFTs or backend
+        firstDepositTime: null,
+        lastDepositTime: null,
+        depositStreak: 0,
+        longestStreak: 0,
+        referralCount: 0,
+        educationProgress: milestones.some(m => m.type === MilestoneType.EDUCATION_COMPLETE) ? 100 : 0,
+        financialFreedomTarget: 10000,
+        milestones,
+      };
+    } catch (error) {
+      console.error('Error fetching user milestone data:', error);
+      throw error;
+    }
   }
 
-  // Check if user has specific milestone
+  // Check if user has specific milestone by querying their NFTs
   async hasAchievedMilestone(user: Address, milestoneType: MilestoneType): Promise<boolean> {
-    return await this.publicClient.readContract({
+    try {
+      const userData = await this.getUserData(user);
+      return userData.milestones.some(m => m.type === milestoneType);
+    } catch (error) {
+      console.error('Error checking milestone:', error);
+      return false;
+    }
+  }
+
+  // Mint milestone NFT (called by backend when milestone is achieved)
+  async mintMilestone(to: Address, milestoneType: MilestoneType, metadata: any): Promise<string> {
+    if (!this.walletClient) throw new Error('Wallet client not set');
+
+    const { request } = await this.publicClient.simulateContract({
       address: this.nftAddress,
       abi: MILESTONE_NFT_ABI,
-      functionName: 'hasAchievedMilestone',
-      args: [user, milestoneType],
-    });
-  }
-
-  // Record a deposit (called by savings contract or admin)
-  async recordDeposit(user: Address, amountUSD: number): Promise<string> {
-    if (!this.walletClient) throw new Error('Wallet client not set');
-
-    const amount = parseUnits(amountUSD.toString(), 6); // USDC has 6 decimals
-
-    const { request } = await this.publicClient.simulateContract({
-      address: this.trackerAddress,
-      abi: MILESTONE_TRACKER_ABI,
-      functionName: 'recordDeposit',
-      args: [user, amount],
-      account: this.walletClient.account,
-    });
-
-    const hash = await this.walletClient.writeContract(request);
-    return hash;
-  }
-
-  // Record education progress
-  async recordEducationProgress(user: Address, moduleId: number): Promise<string> {
-    if (!this.walletClient) throw new Error('Wallet client not set');
-
-    const { request } = await this.publicClient.simulateContract({
-      address: this.trackerAddress,
-      abi: MILESTONE_TRACKER_ABI,
-      functionName: 'recordEducationProgress',
-      args: [user, BigInt(moduleId)],
-      account: this.walletClient.account,
-    });
-
-    const hash = await this.walletClient.writeContract(request);
-    return hash;
-  }
-
-  // Set financial freedom target
-  async setFinancialFreedomTarget(user: Address, targetUSD: number): Promise<string> {
-    if (!this.walletClient) throw new Error('Wallet client not set');
-
-    const target = parseUnits(targetUSD.toString(), 6);
-
-    const { request } = await this.publicClient.simulateContract({
-      address: this.trackerAddress,
-      abi: MILESTONE_TRACKER_ABI,
-      functionName: 'setFinancialFreedomTarget',
-      args: [user, target],
+      functionName: 'mintMilestone',
+      args: [to, milestoneType, BigInt(metadata.value || 0), metadata.title, metadata.description],
       account: this.walletClient.account,
     });
 
