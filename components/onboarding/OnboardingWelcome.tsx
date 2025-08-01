@@ -105,18 +105,16 @@ export function OnboardingWelcome({ onNext, onSkip, onShowCalculator }: Onboardi
                 </div>
               </div>
 
-              {onShowCalculator && (
-                <button
-                  onClick={onShowCalculator}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-lg px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl mb-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <Calculator className="w-5 h-5" />
-                    <span>Try Financial Freedom Calculator</span>
-                    <ArrowRight className="w-5 h-5" />
-                  </div>
-                </button>
-              )}
+              <button
+                onClick={onShowCalculator}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-lg px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl mb-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <Calculator className="w-5 h-5" />
+                  <span>Calculate Your Financial Freedom</span>
+                  <ArrowRight className="w-5 h-5" />
+                </div>
+              </button>
             </div>
           </div>
 

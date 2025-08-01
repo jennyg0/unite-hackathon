@@ -34,6 +34,12 @@ export const ONBOARDING_STEPS: Omit<OnboardingStep, 'completed'>[] = [
     required: true,
   },
   {
+    id: 'financial-calculator',
+    title: 'Calculate Your Financial Freedom',
+    description: 'See exactly when you can achieve financial independence',
+    required: false,
+  },
+  {
     id: 'financial-freedom-education',
     title: 'Financial Freedom 101',
     description: 'Learn the fundamentals that will change your financial future',

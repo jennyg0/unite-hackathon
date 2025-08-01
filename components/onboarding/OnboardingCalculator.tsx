@@ -15,6 +15,7 @@ import { useOnboarding } from "../OnboardingProvider";
 interface OnboardingCalculatorProps {
   onNext: () => void;
   onBack: () => void;
+  onSkip?: () => void;
 }
 
 interface CalculatorResult {
@@ -27,6 +28,7 @@ interface CalculatorResult {
 export function OnboardingCalculator({
   onNext,
   onBack,
+  onSkip,
 }: OnboardingCalculatorProps) {
   const { completeStep, updateUserGoals } = useOnboarding();
 
@@ -69,9 +71,9 @@ export function OnboardingCalculator({
 
   const handleNext = () => {
     if (result) {
-      completeStep("calculator");
-      onNext();
+      completeStep("financial-calculator");
     }
+    onNext();
   };
 
   return (
@@ -232,6 +234,14 @@ export function OnboardingCalculator({
                   <ArrowLeft className="w-4 h-4" />
                   <span>Back</span>
                 </button>
+                {onSkip && (
+                  <button
+                    onClick={onSkip}
+                    className="btn-secondary flex items-center justify-center space-x-2 py-3"
+                  >
+                    <span>Skip for now</span>
+                  </button>
+                )}
                 <button
                   onClick={handleNext}
                   className="btn-primary flex items-center justify-center space-x-2 py-3"
@@ -244,7 +254,26 @@ export function OnboardingCalculator({
           ) : (
             <div className="text-center text-gray-500 py-12">
               <Calculator className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>Enter your financial information to see your results</p>
+              <p className="mb-6">Enter your financial information to see your results</p>
+              
+              {/* Navigation for no results */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={onBack}
+                  className="btn-secondary flex items-center justify-center space-x-2 py-3"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back</span>
+                </button>
+                {onSkip && (
+                  <button
+                    onClick={onSkip}
+                    className="btn-secondary flex items-center justify-center space-x-2 py-3"
+                  >
+                    <span>Skip for now</span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </motion.div>
