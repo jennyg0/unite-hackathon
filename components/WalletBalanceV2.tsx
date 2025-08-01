@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePrivy } from "@privy-io/react-auth";
+import { useENS } from "@/hooks/useENS";
 import {
   Wallet,
   TrendingUp,
@@ -55,6 +56,7 @@ interface PortfolioData {
 
 export default function WalletBalanceV2() {
   const { user, authenticated } = usePrivy();
+  const { getDisplayName, hasENS } = useENS();
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -221,12 +223,27 @@ export default function WalletBalanceV2() {
               <Wallet className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Portfolio</h3>
-              {lastUpdated && (
+              <div className="flex items-center space-x-2">
+                <h3 className="text-lg font-semibold text-gray-900">Portfolio</h3>
+                {hasENS && (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                    ENS
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
                 <p className="text-sm text-gray-500">
-                  Updated {lastUpdated.toLocaleTimeString()}
+                  {getDisplayName()}
                 </p>
-              )}
+                {lastUpdated && (
+                  <>
+                    <span className="text-gray-300">•</span>
+                    <p className="text-sm text-gray-500">
+                      Updated {lastUpdated.toLocaleTimeString()}
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           

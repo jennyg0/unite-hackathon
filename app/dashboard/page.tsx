@@ -26,6 +26,7 @@ import WalletBalanceV2 from "@/components/WalletBalanceV2";
 import SmartDeposit from "@/components/SmartDeposit";
 import { usePrivy } from "@privy-io/react-auth";
 import { useOnboarding } from "@/components/OnboardingProvider";
+import { useENS } from "@/hooks/useENS";
 import PortfolioCharts from "@/components/PortfolioCharts";
 import { FinancialGoals } from "@/components/FinancialGoals";
 import { LoadingDots } from "@/components/ui/LoadingSkeletons";
@@ -38,6 +39,7 @@ type TabType = "portfolio" | "history" | "learn" | "achievements";
 export default function DashboardPage() {
   const { authenticated, ready } = usePrivy();
   const { state: onboardingState } = useOnboarding();
+  const { getDisplayName, hasENS } = useENS();
   const [activeTab, setActiveTab] = useState<TabType>("portfolio");
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [depositModalMode, setDepositModalMode] = useState<
@@ -259,8 +261,34 @@ function MainPortfolioView({
   showHistoryExpanded: boolean;
   onToggleHistory: () => void;
 }) {
+  const { getDisplayName, hasENS } = useENS();
+
   return (
     <div className="space-y-6 md:space-y-8">
+      {/* Welcome Message with ENS */}
+      {hasENS && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-200"
+        >
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-lg">👋</span>
+            </div>
+            <div>
+              <p className="font-medium text-gray-900">
+                Welcome back, {getDisplayName()}!
+              </p>
+              <p className="text-sm text-gray-600">
+                Ready to grow your wealth today?
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Financial Goals - Most important, shown first */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}

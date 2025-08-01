@@ -126,6 +126,7 @@ export enum MilestoneType {
   REFERRAL_CHAMPION = 5,
   EARLY_ADOPTER = 6,
   WHALE_SAVER = 7,
+  ENS_IDENTITY = 8,
 }
 
 export interface Milestone {
@@ -273,6 +274,7 @@ export class MilestoneSDK {
     if (name.includes('Referral')) return MilestoneType.REFERRAL_CHAMPION;
     if (name.includes('Early')) return MilestoneType.EARLY_ADOPTER;
     if (name.includes('Whale')) return MilestoneType.WHALE_SAVER;
+    if (name.includes('ENS') || name.includes('Identity')) return MilestoneType.ENS_IDENTITY;
     return MilestoneType.FIRST_DEPOSIT;
   }
 
@@ -287,6 +289,7 @@ export class MilestoneSDK {
       [MilestoneType.REFERRAL_CHAMPION]: { emoji: '🤝', color: '#14B8A6', category: 'Community' },
       [MilestoneType.EARLY_ADOPTER]: { emoji: '🚀', color: '#F97316', category: 'Special' },
       [MilestoneType.WHALE_SAVER]: { emoji: '🐋', color: '#6366F1', category: 'Elite' },
+      [MilestoneType.ENS_IDENTITY]: { emoji: '🌐', color: '#3B82F6', category: 'Web3 Identity' },
     };
     
     return info[type];

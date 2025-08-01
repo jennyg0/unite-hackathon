@@ -1,20 +1,12 @@
 import { useState, useEffect } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { createPublicClient, http } from 'viem';
-import { mainnet } from 'viem/chains';
-import { normalize } from 'viem/ens';
-// Create a public client for ENS lookups using our 1inch proxy
-// Only create client if we're in browser environment
-const publicClient = typeof window !== 'undefined' ? createPublicClient({
-  chain: mainnet,
-  transport: http('/api/1inch-rpc/1'),
-}) : null;
+import { getCachedENSName, formatAddressWithENS } from '@/lib/1inch-domains';
 
 export function useENS() {
   const { user } = usePrivy();
   const [ensName, setEnsName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasCheckedChain, setHasCheckedChain] = useState(false);
+  const [hasCheckedAPI, setHasCheckedAPI] = useState(false);
 
   useEffect(() => {
     const checkENS = async () => {
@@ -30,17 +22,21 @@ export function useENS() {
           setEnsName(savedENS);
         }
 
-        // Then check the actual blockchain for reverse resolution
-        if (!hasCheckedChain && publicClient) {
-          const name = await publicClient.getEnsName({
-            address: user.wallet.address as `0x${string}`,
-          });
+        // Then check using 1inch Domains API for reverse resolution
+        if (!hasCheckedAPI) {
+          console.log('🔍 Checking ENS for user address:', user.wallet.address);
+          const resolvedName = await getCachedENSName(user.wallet.address);
           
-          if (name) {
-            setEnsName(name.replace('.eth', ''));
-            localStorage.setItem('userENSName', name.replace('.eth', ''));
+          if (resolvedName) {
+            // Remove .eth suffix if present for consistency
+            const cleanName = resolvedName.replace('.eth', '');
+            setEnsName(cleanName);
+            localStorage.setItem('userENSName', cleanName);
+            console.log('✅ Found ENS name:', resolvedName);
+          } else {
+            console.log('ℹ️ No ENS name found for address');
           }
-          setHasCheckedChain(true);
+          setHasCheckedAPI(true);
         }
       } catch (error) {
         console.error('Error checking ENS:', error);
@@ -50,38 +46,24 @@ export function useENS() {
     };
 
     checkENS();
-  }, [user, hasCheckedChain]);
+  }, [user, hasCheckedAPI]);
 
   const getDisplayName = (address?: string): string => {
-    if (ensName) {
-      return `${ensName}.eth`;
-    }
+    const targetAddress = address || user?.wallet?.address;
     
-    if (!address) {
-      address = user?.wallet?.address;
-    }
-    
-    if (!address) {
+    if (!targetAddress) {
       return 'Not connected';
     }
     
-    // Return shortened address if no ENS
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    // Use our 1inch-domains utility to format address with ENS
+    return formatAddressWithENS(targetAddress, ensName ? `${ensName}.eth` : null);
   };
 
   const checkAvailability = async (name: string): Promise<boolean> => {
-    if (!publicClient) return false;
-    
-    try {
-      const normalizedName = normalize(name);
-      const resolver = await publicClient.getEnsResolver({ name: `${normalizedName}.eth` });
-      // If no resolver, the name is likely available
-      return !resolver;
-    } catch (error) {
-      // If normalization fails or other errors, assume unavailable
-      console.error('Error checking ENS availability:', error);
-      return false;
-    }
+    // For now, return false since we'd need additional API endpoints
+    // This could be enhanced with 1inch Domains API forward lookup if available
+    console.warn('ENS availability checking not implemented with 1inch Domains API yet');
+    return false;
   };
 
   const setUserENS = (name: string) => {

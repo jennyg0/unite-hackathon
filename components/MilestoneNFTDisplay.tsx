@@ -14,9 +14,11 @@ import {
   Zap,
   Lock,
   Calendar,
+  Globe,
 } from "lucide-react";
 import { MilestoneSDK, MilestoneType, type Milestone, type UserMilestoneData } from "@/lib/milestone-nft";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
+import { useENSMilestone } from "@/hooks/useENSMilestone";
 
 interface MilestoneCardProps {
   milestone: Milestone;
@@ -36,6 +38,7 @@ function MilestoneCard({ milestone, isEarned, progress = 0, onClick }: Milestone
       case MilestoneType.REFERRAL_CHAMPION: return Users;
       case MilestoneType.EARLY_ADOPTER: return Rocket;
       case MilestoneType.WHALE_SAVER: return Zap;
+      case MilestoneType.ENS_IDENTITY: return Globe;
       default: return Trophy;
     }
   };
@@ -50,6 +53,7 @@ function MilestoneCard({ milestone, isEarned, progress = 0, onClick }: Milestone
       case MilestoneType.REFERRAL_CHAMPION: return { bg: 'from-pink-50 to-pink-100', border: 'border-pink-200', icon: 'text-pink-600' };
       case MilestoneType.EARLY_ADOPTER: return { bg: 'from-orange-50 to-orange-100', border: 'border-orange-200', icon: 'text-orange-600' };
       case MilestoneType.WHALE_SAVER: return { bg: 'from-cyan-50 to-cyan-100', border: 'border-cyan-200', icon: 'text-cyan-600' };
+      case MilestoneType.ENS_IDENTITY: return { bg: 'from-sky-50 to-sky-100', border: 'border-sky-200', icon: 'text-sky-600' };
       default: return { bg: 'from-gray-50 to-gray-100', border: 'border-gray-200', icon: 'text-gray-600' };
     }
   };
@@ -131,6 +135,7 @@ interface MilestoneNFTDisplayProps {
 
 export function MilestoneNFTDisplay({ onMilestoneClick }: MilestoneNFTDisplayProps) {
   const { user, authenticated } = usePrivy();
+  const { ensMilestone, hasENSMilestone } = useENSMilestone();
   const [milestoneData, setMilestoneData] = useState<UserMilestoneData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -273,7 +278,17 @@ export function MilestoneNFTDisplay({ onMilestoneClick }: MilestoneNFTDisplayPro
     );
   }
 
-  const allMilestones = generateAllMilestones(milestoneData);
+  let allMilestones = generateAllMilestones(milestoneData);
+  
+  // Add ENS milestone if user has one
+  if (ensMilestone) {
+    allMilestones.unshift({
+      milestone: ensMilestone,
+      isEarned: hasENSMilestone,
+      progress: hasENSMilestone ? 1 : 0
+    });
+  }
+  
   const earnedCount = allMilestones.filter(m => m.isEarned).length;
   const inProgressCount = allMilestones.filter(m => !m.isEarned && m.progress > 0).length;
 
