@@ -28,6 +28,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useOnboarding } from "@/components/OnboardingProvider";
 import { useENS } from "@/hooks/useENS";
 import PortfolioCharts from "@/components/PortfolioCharts";
+import { SimplePortfolioChart } from "@/components/SimplePortfolioChart";
 import { FinancialGoals } from "@/components/FinancialGoals";
 import { LoadingDots } from "@/components/ui/LoadingSkeletons";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -338,7 +339,7 @@ function MainPortfolioView({
         transition={{ delay: 0.4 }}
       >
         <ErrorBoundary>
-          <PortfolioCharts />
+          <SimplePortfolioChart />
         </ErrorBoundary>
       </motion.div>
 

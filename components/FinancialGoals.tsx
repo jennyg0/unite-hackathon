@@ -6,6 +6,7 @@ import { Target, TrendingUp, Shield, DollarSign, Calendar, ArrowRight } from "lu
 import { useOnboarding } from "./OnboardingProvider";
 import { useWallet } from "@/hooks/useWallet";
 import { FinancialFreedomCalculator } from "./FinancialFreedomCalculator";
+import { FinancialGoalsChart } from "./FinancialGoalsChart";
 
 interface GoalProgress {
   current: number;
@@ -21,6 +22,7 @@ export function FinancialGoals({ onShowDeposit }: { onShowDeposit?: () => void }
   const [emergencyGoal, setEmergencyGoal] = useState<GoalProgress | null>(null);
   const [freedomGoal, setFreedomGoal] = useState<GoalProgress | null>(null);
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [showChart, setShowChart] = useState(false);
 
   useEffect(() => {
     calculateGoalProgress();
@@ -102,6 +104,54 @@ export function FinancialGoals({ onShowDeposit }: { onShowDeposit?: () => void }
     }
   };
 
+  // Calculate months to goal with traditional banking (0.5% APY)
+  const calculateTraditionalMonths = (currentBalance: number, targetAmount: number, monthlyContribution: number, annualAPY: number = 0.005) => {
+    if (monthlyContribution <= 0) return 999;
+    
+    const monthlyRate = annualAPY / 12;
+    let balance = currentBalance;
+    let months = 0;
+    
+    // Iterative calculation for compound interest with monthly contributions
+    while (balance < targetAmount && months < 720) { // Cap at 60 years
+      balance = balance * (1 + monthlyRate) + monthlyContribution;
+      months++;
+    }
+    
+    return months;
+  };
+
+  // Prepare chart data
+  const getChartData = () => {
+    const monthlySavings = state.userGoals.monthlySavingsGoal || 500;
+    
+    const emergencyChartData = emergencyGoal ? {
+      current: emergencyGoal.current,
+      target: emergencyGoal.target,
+      monthlyContribution: monthlySavings,
+      currentAPY: 8.5, // DeFi average
+      traditionalAPY: 0.5, // Traditional bank
+      monthsToGoalDeFi: emergencyGoal.monthsRemaining,
+      monthsToGoalTraditional: calculateTraditionalMonths(emergencyGoal.current, emergencyGoal.target, monthlySavings),
+      title: "Emergency Fund",
+      color: "#3B82F6"
+    } : undefined;
+
+    const freedomChartData = freedomGoal ? {
+      current: freedomGoal.current,
+      target: freedomGoal.target,
+      monthlyContribution: monthlySavings,
+      currentAPY: 8.5, // DeFi average
+      traditionalAPY: 0.5, // Traditional bank
+      monthsToGoalDeFi: freedomGoal.monthsRemaining,
+      monthsToGoalTraditional: calculateTraditionalMonths(freedomGoal.current, freedomGoal.target, monthlySavings),
+      title: "Financial Freedom",
+      color: "#8B5CF6"
+    } : undefined;
+
+    return { emergencyChartData, freedomChartData };
+  };
+
   if (!emergencyGoal && !freedomGoal) {
     return null;
   }
@@ -114,13 +164,22 @@ export function FinancialGoals({ onShowDeposit }: { onShowDeposit?: () => void }
           <Target className="w-5 h-5 text-purple-600" />
           <h3 className="text-lg font-semibold text-gray-900">Your Financial Goals</h3>
         </div>
-        <button 
-          onClick={() => setShowGoalModal(true)}
-          className="text-purple-600 hover:text-purple-700 text-sm font-medium flex items-center space-x-1"
-        >
-          <span>Adjust Goals</span>
-          <ArrowRight className="w-3 h-3" />
-        </button>
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={() => setShowChart(!showChart)}
+            className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1"
+          >
+            <TrendingUp className="w-3 h-3" />
+            <span>{showChart ? 'Hide' : 'Show'} Timeline</span>
+          </button>
+          <button 
+            onClick={() => setShowGoalModal(true)}
+            className="text-purple-600 hover:text-purple-700 text-sm font-medium flex items-center space-x-1"
+          >
+            <span>Adjust Goals</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -243,6 +302,21 @@ export function FinancialGoals({ onShowDeposit }: { onShowDeposit?: () => void }
           </motion.div>
         )}
       </div>
+
+      {/* Financial Goals Chart */}
+      {showChart && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <FinancialGoalsChart 
+            emergencyGoal={getChartData().emergencyChartData}
+            freedomGoal={getChartData().freedomChartData}
+          />
+        </motion.div>
+      )}
 
       {/* Quick Actions */}
       <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 border border-green-200">
