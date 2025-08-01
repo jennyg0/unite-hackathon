@@ -99,7 +99,7 @@ export default function DashboardPage() {
                   <TrendingUp className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-xl font-semibold text-gray-900">
-                  Compound
+                  BYOB
                 </span>
               </div>
               <ConnectWallet />
@@ -148,7 +148,7 @@ export default function DashboardPage() {
                 <TrendingUp className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-semibold text-gray-900">
-                Compound
+                BYOB
               </span>
             </div>
             <ConnectWallet />
