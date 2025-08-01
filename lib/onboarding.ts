@@ -13,6 +13,7 @@ export interface OnboardingState {
   userGoals: {
     financialFreedomNumber?: number;
     monthlySavingsGoal?: number;
+    monthlyExpenses?: number;
     riskTolerance?: 'low' | 'medium' | 'high';
     preferredStrategy?: 'savings' | 'yield' | 'mixed';
   };
@@ -31,6 +32,18 @@ export const ONBOARDING_STEPS: Omit<OnboardingStep, 'completed'>[] = [
     title: 'Choose Your Username',
     description: 'Make your account personal - no more ugly addresses',
     required: true,
+  },
+  {
+    id: 'financial-freedom-education',
+    title: 'Financial Freedom 101',
+    description: 'Learn the fundamentals that will change your financial future',
+    required: false,
+  },
+  {
+    id: 'emergency-fund-education',
+    title: 'Emergency Fund Essentials',
+    description: 'Build your financial safety net the smart way',
+    required: false,
   },
   {
     id: 'start-earning',

@@ -1,11 +1,9 @@
 import { 
-  createPublicClient, 
-  createWalletClient, 
-  http,
   parseUnits,
   type Address 
 } from 'viem';
 import { polygon, base, mainnet } from 'viem/chains';
+import { get1inchRPC } from './1inch-rpc';
 
 // Contract ABIs (simplified)
 const MILESTONE_NFT_ABI = [

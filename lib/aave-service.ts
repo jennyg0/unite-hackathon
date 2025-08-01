@@ -314,11 +314,40 @@ export class AaveService {
       throw new Error(`Aave not supported on chain ${this.chainId}`);
     }
 
-    // This would encode the actual Aave pool.supply() call
-    // For now, returning a placeholder
+    const tokenConfig = STABLECOIN_MARKETS[this.chainId]?.[asset];
+    if (!tokenConfig) {
+      throw new Error(`Token ${asset} not supported on chain ${this.chainId}`);
+    }
+
+    // Encode the Aave Pool.supply() function call
+    // function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode)
+    // Function selector: 0x617ba037
+    const functionSelector = "0x617ba037";
+    
+    // Encode parameters:
+    // - asset address (32 bytes)
+    // - amount (32 bytes) 
+    // - onBehalfOf address (32 bytes)
+    // - referralCode (32 bytes) - we use 0
+    
+    const assetAddress = tokenConfig.address.slice(2).padStart(64, '0'); // Remove 0x and pad
+    const amountHex = BigInt(amount).toString(16).padStart(64, '0');
+    const onBehalfOfAddress = onBehalfOf.slice(2).padStart(64, '0'); // Remove 0x and pad
+    const referralCode = "0".padStart(64, '0');
+    
+    const encodedData = functionSelector + assetAddress + amountHex + onBehalfOfAddress + referralCode;
+    
+    console.log('🏗️ Aave deposit transaction details:', {
+      pool: aaveAddresses.pool,
+      asset: tokenConfig.address,
+      amount,
+      onBehalfOf,
+      encodedData
+    });
+
     return {
       to: aaveAddresses.pool,
-      data: "0x", // Would be encoded function call
+      data: encodedData,
       value: "0"
     };
   }
