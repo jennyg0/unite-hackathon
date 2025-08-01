@@ -371,17 +371,17 @@ export function SimplePortfolioChart() {
                   
                   {/* Area fill */}
                   <path
-                    d={[
-                      ...portfolioHistory.map((point, index) => {
+                    d={(() => {
+                      const pathCommands = portfolioHistory.map((point, index) => {
                         const x = (index / (portfolioHistory.length - 1)) * 100;
                         const minValue = Math.min(...portfolioHistory.map(p => p.value));
                         const maxValue = Math.max(...portfolioHistory.map(p => p.value));
                         const valueRange = maxValue - minValue || 1;
                         const y = 100 - ((point.value - minValue) / valueRange) * 80;
                         return `${index === 0 ? 'M' : 'L'} ${x}% ${y}%`;
-                      }).join(' '),
-                      `L 100% 100% L 0% 100% Z`
-                    ].join(' ')}
+                      });
+                      return [...pathCommands, `L 100% 100% L 0% 100% Z`].join(' ');
+                    })()}
                     fill="url(#portfolioGradient)"
                   />
                 </>

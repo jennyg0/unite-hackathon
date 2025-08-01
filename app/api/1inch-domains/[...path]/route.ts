@@ -5,7 +5,7 @@ const DOMAINS_BASE_URL = 'https://api.1inch.dev/domains/v2.0';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   if (!ONEINCH_API_KEY) {
     return NextResponse.json(
@@ -15,7 +15,8 @@ export async function GET(
   }
 
   try {
-    const path = params.path.join('/');
+    const resolvedParams = await params;
+    const path = resolvedParams.path.join('/');
     const searchParams = request.nextUrl.searchParams;
     
     // Build the target URL

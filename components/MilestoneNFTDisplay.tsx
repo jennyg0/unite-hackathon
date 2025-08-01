@@ -162,8 +162,8 @@ export function MilestoneNFTDisplay({ onMilestoneClick }: MilestoneNFTDisplayPro
         // Show available milestones instead of error
         const mockData: UserMilestoneData = {
           totalDeposited: 0,
-          firstDepositTime: undefined,
-          lastDepositTime: undefined,
+          firstDepositTime: null,
+          lastDepositTime: null,
           depositStreak: 0,
           longestStreak: 0,
           referralCount: 0,
