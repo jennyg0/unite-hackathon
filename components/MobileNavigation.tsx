@@ -10,15 +10,13 @@ import {
   X,
   BookOpen,
   Award,
-  Clock,
 } from "lucide-react";
 
 type TabType =
   | "portfolio"
   | "history"
   | "learn"
-  | "achievements"
-  | "autoDeposit";
+  | "achievements";
 
 interface MobileNavigationProps {
   activeTab: TabType;
@@ -33,7 +31,6 @@ export function MobileNavigation({
 
   const tabs = [
     { id: "portfolio", label: "Portfolio", icon: BarChart3 },
-    { id: "autoDeposit", label: "Auto Deposits", icon: Clock },
     { id: "learn", label: "Learn", icon: BookOpen },
     { id: "achievements", label: "Achievements", icon: Award },
     { id: "history", label: "History", icon: History },

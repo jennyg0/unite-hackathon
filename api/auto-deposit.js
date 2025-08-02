@@ -37,12 +37,12 @@ app.post('/schedule-auto-deposit', async (req, res) => {
             });
         }
         
-        // Create schedule
+        // Create schedule - preserve original address case for Web3 compatibility
         const scheduleId = `${user}_${Date.now()}`;
         const schedule = {
             id: scheduleId,
-            user: user.toLowerCase(),
-            token: token.toLowerCase(),
+            user: user, // Keep original case for approvals
+            token: token, // Keep original case  
             amount: amount.toString(),
             intervalDays: parseInt(intervalDays),
             nextDeposit: startTime ? new Date(startTime) : new Date(),
@@ -84,9 +84,9 @@ app.post('/schedule-auto-deposit', async (req, res) => {
 // GET /scheduled-deposits/:user
 app.get('/scheduled-deposits/:user', (req, res) => {
     try {
-        const user = req.params.user.toLowerCase();
+        const user = req.params.user;
         const userSchedules = Array.from(scheduledDeposits.values())
-            .filter(schedule => schedule.user === user)
+            .filter(schedule => schedule.user.toLowerCase() === user.toLowerCase())
             .map(schedule => ({
                 ...schedule,
                 nextDeposit: schedule.nextDeposit.toISOString(),
@@ -169,7 +169,10 @@ app.post('/execute-deposit', (req, res) => {
         // Update schedule for next execution
         const nextDeposit = new Date(Date.now() + (schedule.intervalDays * 24 * 60 * 60 * 1000));
         schedule.nextDeposit = nextDeposit;
-        schedule.totalDeposited = (BigInt(schedule.totalDeposited) + BigInt(amount)).toString();
+        // Handle decimal amounts properly
+        const currentTotal = parseFloat(schedule.totalDeposited) || 0;
+        const newAmount = parseFloat(amount) || 0;
+        schedule.totalDeposited = (currentTotal + newAmount).toString();
         schedule.lastExecution = {
             timestamp: new Date(),
             txHash,
@@ -202,6 +205,41 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString(),
         scheduledCount: scheduledDeposits.size 
     });
+});
+
+// TEST ENDPOINT: Force a schedule to be due now
+app.post('/test-make-due/:scheduleId', (req, res) => {
+    try {
+        const scheduleId = req.params.scheduleId;
+        const schedule = scheduledDeposits.get(scheduleId);
+        
+        if (!schedule) {
+            return res.status(404).json({ error: 'Schedule not found' });
+        }
+        
+        // Make it due now
+        schedule.nextDeposit = new Date(Date.now() - 1000); // 1 second ago
+        
+        console.log('🧪 TEST: Made schedule due now:', {
+            scheduleId,
+            user: schedule.user,
+            amount: schedule.amount,
+            nextDeposit: schedule.nextDeposit
+        });
+        
+        res.json({
+            success: true,
+            message: 'Schedule is now due for execution',
+            schedule: {
+                ...schedule,
+                nextDeposit: schedule.nextDeposit.toISOString()
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Error making schedule due:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 const port = process.env.PORT || 3001;

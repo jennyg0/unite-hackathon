@@ -36,7 +36,7 @@ import EducationCenter from "@/components/EducationCenter";
 import MilestoneNFTDisplay from "@/components/MilestoneNFTDisplay";
 import AutoDepositDashboard from "@/components/AutoDepositDashboard";
 
-type TabType = "portfolio" | "history" | "learn" | "achievements" | "autoDeposit";
+type TabType = "portfolio" | "history" | "learn" | "achievements";
 
 export default function DashboardPage() {
   const { authenticated, ready } = usePrivy();
@@ -190,7 +190,6 @@ export default function DashboardPage() {
           {activeTab === "learn" && <LearnTab />}
           {activeTab === "achievements" && <AchievementsTab />}
           {activeTab === "history" && <HistoryTab />}
-          {activeTab === "autoDeposit" && <AutoDepositTab />}
         </motion.div>
 
         {/* Deposit Modal */}
@@ -316,11 +315,22 @@ function MainPortfolioView({
         </ErrorBoundary>
       </motion.div>
 
+      {/* Auto Deposits Management */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+      >
+        <ErrorBoundary>
+          <AutoDepositDashboard />
+        </ErrorBoundary>
+      </motion.div>
+
       {/* Primary Action - Big Deposit Button */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.35 }}
         className="text-center"
       >
         <button
@@ -342,7 +352,7 @@ function MainPortfolioView({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.45 }}
       >
         <ErrorBoundary>
           <SimplePortfolioChart />
@@ -353,7 +363,7 @@ function MainPortfolioView({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
+        transition={{ delay: 0.55 }}
         className="border-t border-gray-200 pt-6"
       >
         <button
@@ -481,18 +491,3 @@ function HistoryTab() {
   );
 }
 
-// AUTO DEPOSIT TAB - Manage automated deposits
-function AutoDepositTab() {
-  return (
-    <motion.div
-      className="max-w-6xl mx-auto"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <ErrorBoundary>
-        <AutoDepositDashboard />
-      </ErrorBoundary>
-    </motion.div>
-  );
-}

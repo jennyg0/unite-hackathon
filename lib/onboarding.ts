@@ -23,7 +23,7 @@ export interface OnboardingState {
 export const ONBOARDING_STEPS: Omit<OnboardingStep, 'completed'>[] = [
   {
     id: 'welcome',
-    title: 'Welcome to Compound',
+    title: 'Welcome to BYOB',
     description: 'The savings account that actually beats inflation',
     required: true,
   },

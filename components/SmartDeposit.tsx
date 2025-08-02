@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { useFusionSwap } from "@/hooks/useFusionSwap";
 import { useAutomatedDeposits } from "@/hooks/useAutomatedDeposits";
+import { useMilestoneTracking } from "@/hooks/useMilestoneTracking";
+import { MilestoneType } from "@/lib/milestone-nft";
 import { transactionHistory } from "@/lib/transaction-history";
 import { AaveService } from "@/lib/aave-service";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
@@ -76,6 +78,14 @@ export default function SmartDeposit({
   const { findBestRoutes, isLoading: fusionLoading } = useFusionSwap();
   const { setupAutomatedDeposits, isLoading: depositsLoading } =
     useAutomatedDeposits();
+  
+  // Milestone tracking with NFT minting callback
+  const { trackDeposit, trackAutomatedSavings } = useMilestoneTracking({
+    onMilestoneEarned: (milestone) => {
+      console.log('🎉 Milestone earned!', milestone);
+      // You could show a notification here
+    }
+  });
 
   // Smart default amount - use monthly savings goal for recurring, $10 for one-time
   const getDefaultAmount = () => {
@@ -867,6 +877,9 @@ export default function SmartDeposit({
             token: "USDC",
           });
           console.log("✅ Automated deposits set up successfully");
+          
+          // Track savings streak milestone
+          await trackAutomatedSavings();
         } catch (automationError) {
           console.log(
             "⚠️ Automation setup failed, simulating:",

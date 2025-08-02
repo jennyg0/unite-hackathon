@@ -2,7 +2,21 @@
 // Run this every hour/day via cron or GitHub Actions
 
 const { ethers } = require('ethers');
-const fetch = require('node-fetch');
+
+// Handle fetch for different Node.js versions
+let fetch;
+if (typeof globalThis.fetch === 'undefined') {
+  // Node.js < 18 or fetch not available
+  try {
+    fetch = require('node-fetch');
+  } catch (err) {
+    console.error('❌ node-fetch not installed. Run: npm install node-fetch@2');
+    process.exit(1);
+  }
+} else {
+  // Node.js >= 18 with built-in fetch
+  fetch = globalThis.fetch;
+}
 
 // Configuration
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
@@ -74,10 +88,18 @@ class DepositExecutor {
             }
             
             // Execute the depositFor transaction
+            // Convert amount to proper decimals (USDC has 6 decimals)
+            const amountInDecimals = ethers.parseUnits(deposit.amount, 6);
+            
+            console.log('💱 Amount conversion:', {
+                original: deposit.amount,
+                decimals: amountInDecimals.toString()
+            });
+            
             const tx = await this.contract.depositFor(
                 deposit.user,
                 deposit.token,
-                deposit.amount,
+                amountInDecimals,
                 {
                     gasLimit: 300000, // 300k gas limit
                     gasPrice: ethers.parseUnits('30', 'gwei') // 30 gwei
