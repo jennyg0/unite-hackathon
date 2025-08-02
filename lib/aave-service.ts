@@ -78,8 +78,13 @@ const STABLECOIN_MARKETS: Record<number, Record<string, {
 }>> = {
   137: { // Polygon
     USDC: {
-      address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+      address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', // Bridged USDC.e
       aTokenAddress: '0x625E7708f30cA75bfd92586e17077590C60eb4cD',
+      decimals: 6,
+    },
+    'USDC_NATIVE': {
+      address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', // Native USDC  
+      aTokenAddress: '0xA4D94019934D8333Ef880ABFFbF2FDd611C762BD', // aUSDC for native USDC
       decimals: 6,
     },
     USDT: {
@@ -133,8 +138,15 @@ export class AaveService {
 
   // Get risk profiles with current APYs
   async getRiskProfiles(): Promise<RiskProfile[]> {
-    // In a real implementation, we'd fetch current APYs from Aave
-    // For now, using realistic estimates
+    // Fetch live APYs from Aave
+    const liveRates = await this.getLiveRates().catch(() => []);
+    
+    // Helper to get live APY or fallback
+    const getAPY = (symbol: string, fallback: string) => {
+      const liveRate = liveRates.find(r => r.symbol === symbol);
+      return liveRate ? `${liveRate.supplyAPY}%` : fallback;
+    };
+
     const profiles: RiskProfile[] = [
       {
         name: "Conservative",
@@ -147,21 +159,21 @@ export class AaveService {
           {
             protocol: "Aave V3",
             asset: "USDC",
-            apy: "3.8%",
+            apy: getAPY("USDC", "3.8%"),
             allocation: 50,
             description: "Supply USDC to Aave for stable yields"
           },
           {
             protocol: "Aave V3",
             asset: "USDT",
-            apy: "4.2%",
+            apy: getAPY("USDT", "4.2%"),
             allocation: 30,
             description: "Supply USDT for slightly higher yields"
           },
           {
             protocol: "Aave V3",
             asset: "DAI",
-            apy: "3.5%",
+            apy: getAPY("DAI", "3.5%"),
             allocation: 20,
             description: "Decentralized stablecoin for diversification"
           }
@@ -178,21 +190,21 @@ export class AaveService {
           {
             protocol: "Aave V3",
             asset: "USDC",
-            apy: "3.8%",
+            apy: getAPY("USDC", "3.8%"),
             allocation: 40,
             description: "Core stable position"
           },
           {
             protocol: "Aave V3",
             asset: "WETH",
-            apy: "2.1%",
+            apy: getAPY("WETH", "2.1%"),
             allocation: 20,
             description: "ETH exposure with lending yield"
           },
           {
             protocol: "Aave V3",
             asset: "WMATIC",
-            apy: "6.5%",
+            apy: getAPY("WMATIC", "6.5%"),
             allocation: 20,
             description: "Higher yield with MATIC"
           },
@@ -208,7 +220,7 @@ export class AaveService {
       {
         name: "Growth",
         description: "Higher risk, higher reward. For experienced DeFi users.",
-        targetAPY: "8-15%",
+        targetAPY: "7-15%",
         riskLevel: "high",
         color: "#F59E0B",
         icon: "🚀",
@@ -216,14 +228,14 @@ export class AaveService {
           {
             protocol: "Aave V3",
             asset: "WETH",
-            apy: "2.1%",
+            apy: getAPY("WETH", "2.1%"),
             allocation: 30,
             description: "ETH as collateral"
           },
           {
             protocol: "Aave V3",
             asset: "WMATIC",
-            apy: "6.5%",
+            apy: getAPY("WMATIC", "6.5%"),
             allocation: 30,
             description: "High yield native token"
           },
@@ -288,23 +300,324 @@ export class AaveService {
     return "250000"; // Conservative estimate
   }
 
-  // Get current supply APY for an asset
+  // Get current supply APY for an asset from Aave V3
   async getSupplyAPY(asset: string): Promise<string> {
-    // In production, this would query Aave's data provider
-    // For now, return mock data
-    const apys: Record<string, string> = {
-      USDC: "3.8",
-      USDT: "4.2",
-      DAI: "3.5",
-      WETH: "2.1",
-      WMATIC: "6.5"
+    try {
+      const liveRates = await this.getLiveRates();
+      const rateData = liveRates.find(r => r.symbol === asset);
+      return rateData ? rateData.supplyAPY : "0";
+    } catch (error) {
+      console.error(`Failed to get live APY for ${asset}:`, error);
+      // Use updated fallback rates closer to current market
+      const fallbackApys: Record<string, string> = {
+        USDC: "4.48", // Current Aave rate
+        USDT: "4.52", 
+        DAI: "4.15",
+        WETH: "2.35",
+        WMATIC: "6.85"
+      };
+      return fallbackApys[asset] || "0";
+    }
+  }
+
+  // Fetch live rates from Aave V3 Subgraph
+  async getLiveRates(): Promise<Array<{
+    symbol: string;
+    address: string;
+    supplyAPY: string;
+    borrowAPY: string;
+    totalSupply: string;
+    availableLiquidity: string;
+    utilizationRate: string;
+  }>> {
+    // Subgraph endpoints for different chains
+    const subgraphUrls: Record<number, string> = {
+      137: 'https://api.thegraph.com/subgraphs/name/messari/aave-v3-polygon', // Polygon
+      1: 'https://api.thegraph.com/subgraphs/name/messari/aave-v3-ethereum',   // Ethereum  
+      8453: 'https://api.thegraph.com/subgraphs/name/messari/aave-v3-base',   // Base
     };
+
+    const subgraphUrl = subgraphUrls[this.chainId];
+    if (!subgraphUrl) {
+      throw new Error(`Subgraph not available for chain ${this.chainId}`);
+    }
+
+    try {
+      console.log('🔍 Fetching live Aave rates from subgraph:', subgraphUrl);
+
+      // GraphQL query to get reserve data with supply rates
+      const query = `
+        {
+          markets(first: 20, orderBy: totalValueLockedUSD, orderDirection: desc) {
+            id
+            name
+            inputToken {
+              id
+              symbol
+              decimals
+            }
+            rates(first: 1, orderBy: timestamp, orderDirection: desc) {
+              rate
+              type
+            }
+            totalValueLockedUSD
+            totalDepositBalanceUSD
+            totalBorrowBalanceUSD
+          }
+        }
+      `;
+
+      const response = await fetch(subgraphUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Subgraph request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.errors) {
+        throw new Error(`Subgraph errors: ${JSON.stringify(data.errors)}`);
+      }
+
+      const rates = this.parseSubgraphRates(data.data.markets);
+      console.log('✅ Fetched live Aave rates from subgraph:', rates);
+      return rates;
+
+    } catch (error) {
+      console.error('Failed to fetch live Aave rates from subgraph:', error);
+      throw error;
+    }
+  }
+
+  // Parse subgraph data to extract supply rates
+  private parseSubgraphRates(markets: any[]): Array<{
+    symbol: string;
+    address: string;
+    supplyAPY: string;
+    borrowAPY: string;
+    totalSupply: string;
+    availableLiquidity: string;
+    utilizationRate: string;
+  }> {
+    const rates = [];
+
+    for (const market of markets) {
+      if (!market.inputToken) continue;
+
+      // Find the supply rate (type "LENDER" in Messari subgraph)
+      const supplyRate = market.rates?.find((rate: any) => rate.type === 'LENDER');
+      const borrowRate = market.rates?.find((rate: any) => rate.type === 'BORROWER');
+
+      // Convert rate from decimal to percentage (e.g., 0.0448 -> 4.48)
+      const supplyAPY = supplyRate ? (parseFloat(supplyRate.rate) * 100).toFixed(2) : "0";
+      const borrowAPY = borrowRate ? (parseFloat(borrowRate.rate) * 100).toFixed(2) : "0";
+
+      rates.push({
+        symbol: market.inputToken.symbol,
+        address: market.inputToken.id.toLowerCase(),
+        supplyAPY,
+        borrowAPY,
+        totalSupply: market.totalDepositBalanceUSD || "0",
+        availableLiquidity: market.totalValueLockedUSD || "0",
+        utilizationRate: this.calculateUtilizationRate(
+          market.totalDepositBalanceUSD, 
+          market.totalBorrowBalanceUSD
+        )
+      });
+    }
+
+    return rates;
+  }
+
+  // Calculate utilization rate
+  private calculateUtilizationRate(totalDeposits: string, totalBorrows: string): string {
+    const deposits = parseFloat(totalDeposits || "0");
+    const borrows = parseFloat(totalBorrows || "0");
     
-    return apys[asset] || "0";
+    if (deposits === 0) return "0";
+    
+    const utilization = (borrows / deposits) * 100;
+    return Math.min(utilization, 100).toFixed(2);
+  }
+
+  // Get user's Aave positions
+  async getUserAavePositions(userAddress: string): Promise<Array<{
+    asset: string;
+    aTokenAddress: string;
+    balance: string;
+    balanceUsd: number;
+    supplyAPY: string;
+  }>> {
+    try {
+      console.log('🔍 Fetching Aave positions for:', userAddress);
+      
+      const positions = [];
+      
+      // Specifically check for aUSDC (your actual aToken) on Polygon
+      const aUSDCAddress = '0xA4D94019934D8333Ef880ABFFbF2FDd611C762BD';
+      console.log('🎯 Checking specific aUSDC token:', aUSDCAddress);
+      
+      try {
+        const aTokenBalance = await this.getATokenBalance(userAddress, aUSDCAddress);
+        console.log('💰 aUSDC balance found:', aTokenBalance);
+        
+        if (aTokenBalance > 0) {
+          const supplyAPY = await this.getSupplyAPY('USDC');
+          
+          // For aTokens, balance should be 1:1 with underlying asset price
+          const balanceUsd = aTokenBalance; // aUSDC should be ~1:1 with USD
+          
+          positions.push({
+            asset: 'USDC',
+            aTokenAddress: aUSDCAddress,
+            balance: aTokenBalance.toString(),
+            balanceUsd: balanceUsd,
+            supplyAPY: supplyAPY
+          });
+          
+          console.log(`✅ Found aUSDC position:`, {
+            balance: aTokenBalance,
+            balanceUsd: balanceUsd,
+            supplyAPY: supplyAPY
+          });
+        } else {
+          console.log('ℹ️ No aUSDC balance found');
+        }
+      } catch (error) {
+        console.warn('Failed to check aUSDC position:', error);
+      }
+      
+      // Also check other configured markets
+      const markets = STABLECOIN_MARKETS[this.chainId];
+      if (markets) {
+        for (const [asset, marketData] of Object.entries(markets)) {
+          // Skip if we already checked this one
+          if (marketData.aTokenAddress.toLowerCase() === aUSDCAddress.toLowerCase()) {
+            continue;
+          }
+          
+          try {
+            const aTokenBalance = await this.getATokenBalance(userAddress, marketData.aTokenAddress);
+            
+            if (aTokenBalance > 0) {
+              const supplyAPY = await this.getSupplyAPY(asset);
+              const balanceUsd = aTokenBalance; // Simplified - should multiply by token price
+              
+              positions.push({
+                asset: asset,
+                aTokenAddress: marketData.aTokenAddress,
+                balance: aTokenBalance.toString(),
+                balanceUsd: balanceUsd,
+                supplyAPY: supplyAPY
+              });
+              
+              console.log(`✅ Found ${asset} position:`, {
+                balance: aTokenBalance,
+                supplyAPY: supplyAPY
+              });
+            }
+          } catch (error) {
+            console.warn(`Failed to check ${asset} position:`, error);
+          }
+        }
+      }
+      
+      console.log('📊 Total Aave positions found:', positions.length);
+      return positions;
+    } catch (error) {
+      console.error('Failed to fetch Aave positions:', error);
+      return [];
+    }
+  }
+
+  // Get aToken balance for a user using direct RPC call
+  private async getATokenBalance(userAddress: string, aTokenAddress: string): Promise<number> {
+    try {
+      console.log(`🔍 Getting aToken balance via RPC for ${aTokenAddress}...`);
+      
+      // First try 1inch API (might work for some aTokens)
+      try {
+        const oneInchAPI = getOneInchAPI();
+        const balances = await oneInchAPI.getWalletBalances(userAddress, this.chainId);
+        
+        const aTokenBalance = balances.find(balance => 
+          balance.token.address.toLowerCase() === aTokenAddress.toLowerCase()
+        );
+        
+        if (aTokenBalance && parseFloat(aTokenBalance.balance) > 0) {
+          const balance = parseFloat(aTokenBalance.balance) / Math.pow(10, aTokenBalance.token.decimals);
+          console.log(`✅ Found aToken via 1inch API: ${balance}`);
+          return balance;
+        }
+      } catch (error) {
+        console.log('1inch API failed, trying direct RPC...');
+      }
+      
+      // Direct RPC call to get ERC20 balance
+      console.log('🌐 Making direct RPC call for aToken balance...');
+      
+      // ERC20 balanceOf function signature: balanceOf(address) returns (uint256)
+      // Function selector: 0x70a08231
+      const functionSelector = '0x70a08231';
+      const paddedAddress = userAddress.slice(2).padStart(64, '0'); // Remove 0x and pad to 32 bytes
+      const callData = functionSelector + paddedAddress;
+      
+      // Polygon RPC endpoint
+      const rpcUrl = 'https://polygon-rpc.com';
+      
+      const response = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_call',
+          params: [
+            {
+              to: aTokenAddress,
+              data: callData
+            },
+            'latest'
+          ],
+          id: 1
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.error) {
+        console.error('RPC call error:', result.error);
+        return 0;
+      }
+      
+      if (result.result && result.result !== '0x') {
+        // Convert hex result to number (assuming 6 decimals for USDC)
+        const balanceHex = result.result;
+        const balanceBigInt = BigInt(balanceHex);
+        const balance = Number(balanceBigInt) / Math.pow(10, 6); // aUSDC has 6 decimals
+        
+        console.log(`✅ Found aToken balance via RPC: ${balance}`);
+        return balance;
+      }
+      
+      console.log('ℹ️ No aToken balance found via RPC');
+      return 0;
+      
+    } catch (error) {
+      console.error('Failed to get aToken balance:', error);
+      return 0;
+    }
   }
 
   // Build transaction data for Aave deposit
-  buildDepositTx(asset: string, amount: string, onBehalfOf: string): {
+  buildDepositTx(asset: string, amount: string, onBehalfOf: string, tokenAddress?: string): {
     to: string;
     data: string;
     value: string;
@@ -314,7 +627,16 @@ export class AaveService {
       throw new Error(`Aave not supported on chain ${this.chainId}`);
     }
 
-    const tokenConfig = STABLECOIN_MARKETS[this.chainId]?.[asset];
+    let tokenConfig = STABLECOIN_MARKETS[this.chainId]?.[asset];
+    
+    // If a specific token address is provided, try to find matching config or use native USDC
+    if (tokenAddress) {
+      const nativeUsdcAddress = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359';
+      if (tokenAddress.toLowerCase() === nativeUsdcAddress.toLowerCase()) {
+        tokenConfig = STABLECOIN_MARKETS[this.chainId]?.['USDC_NATIVE'];
+      }
+    }
+    
     if (!tokenConfig) {
       throw new Error(`Token ${asset} not supported on chain ${this.chainId}`);
     }
@@ -340,9 +662,11 @@ export class AaveService {
     console.log('🏗️ Aave deposit transaction details:', {
       pool: aaveAddresses.pool,
       asset: tokenConfig.address,
+      assetName: asset,
       amount,
       onBehalfOf,
-      encodedData
+      encodedData,
+      tokenConfig
     });
 
     return {

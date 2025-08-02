@@ -289,12 +289,13 @@ class OneInchAPI {
       // Handle the actual API response format: { "tokenAddress": "balance" }
       for (const [tokenAddress, balanceStr] of Object.entries(response)) {
         const balance = balanceStr as string;
-        console.log(`🪙 Processing token ${tokenAddress}: balance=${balance}`);
         
-        // Skip tokens with zero balance
+        // Skip tokens with zero balance early (no logging for zero balances)
         if (!balance || balance === '0') {
           continue;
         }
+        
+        console.log(`🪙 Processing token ${tokenAddress}: balance=${balance}`);
         
         // Get token metadata
         let tokenInfo = tokenMap.get(tokenAddress.toLowerCase());
@@ -461,6 +462,28 @@ class OneInchAPI {
     } catch (error) {
       console.error('Failed to fetch token metadata:', error);
       return null;
+    }
+  }
+
+  // Get token allowances for a specific spender
+  async getAllowances(spenderAddress: string, walletAddress: string): Promise<Record<string, string>> {
+    try {
+      const response = await this.request(`/balance/v1.2/${this.chainId}/allowances/${spenderAddress}/${walletAddress}`);
+      return response || {};
+    } catch (error) {
+      console.error('Failed to fetch allowances:', error);
+      return {};
+    }
+  }
+
+  // Get specific token allowance
+  async getTokenAllowance(tokenAddress: string, ownerAddress: string, spenderAddress: string): Promise<string> {
+    try {
+      const allowances = await this.getAllowances(spenderAddress, ownerAddress);
+      return allowances[tokenAddress.toLowerCase()] || allowances[tokenAddress] || '0';
+    } catch (error) {
+      console.error('Failed to fetch token allowance:', error);
+      return '0';
     }
   }
 
