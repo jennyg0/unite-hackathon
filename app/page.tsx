@@ -47,7 +47,7 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-16 pb-16">
           {/* Main Headline - Centered */}
           <div className="text-center mb-12">
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
@@ -55,7 +55,7 @@ export default function HomePage() {
             >
               Be Your Own Bank
             </motion.h1>
-            
+
             {/* Enhanced "Why?" Section */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -71,11 +71,11 @@ export default function HomePage() {
                 </h2>
                 <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent w-20"></div>
               </div>
-              
+
               <p className="text-xl md:text-2xl text-gray-600 font-medium max-w-2xl mx-auto leading-relaxed">
-                Because traditional banks are 
+                Because traditional banks are
                 <span className="text-red-600 font-bold"> stealing </span>
-                your money through inflation while paying you 
+                your money through inflation while paying you
                 <span className="text-red-600 font-bold"> almost nothing</span>
               </p>
             </motion.div>
@@ -149,23 +149,27 @@ export default function HomePage() {
               <div className="mb-8">
                 <div className="inline-flex items-center justify-center mb-6">
                   <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent w-20"></div>
-                  <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mx-6">The Solution</h3>
+                  <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mx-6">
+                    The Solution
+                  </h3>
                   <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent w-20"></div>
                 </div>
               </div>
 
               <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
-                BYOB: The Savings Account That
+                BYOB: The Savings App That
                 <br />
                 <span className="bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
-                  Actually Grows Your Money
+                  Generates Investment-Like Returns
                 </span>
               </h3>
 
               <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 md:p-8 max-w-2xl mx-auto mb-8">
                 <p className="text-xl md:text-2xl text-gray-800 font-semibold mb-2">
                   Earn{" "}
-                  <span className="text-green-600 font-bold text-2xl md:text-3xl">3.75-15% APY</span>{" "}
+                  <span className="text-green-600 font-bold text-2xl md:text-3xl">
+                    3.75-15% APY
+                  </span>{" "}
                   automatically
                 </p>
                 <p className="text-lg text-gray-600">
@@ -185,7 +189,9 @@ export default function HomePage() {
               <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center mb-6">
                   <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent w-20"></div>
-                  <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mx-6">The Difference</h3>
+                  <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mx-6">
+                    The Difference
+                  </h3>
                   <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent w-20"></div>
                 </div>
                 <p className="text-lg text-gray-600 max-w-xl mx-auto">
@@ -204,16 +210,26 @@ export default function HomePage() {
                   </h4>
                   <div className="space-y-4">
                     <div className="bg-white rounded-lg p-3 flex justify-between items-center">
-                      <span className="text-gray-700 font-medium">$1,000 after 1 year:</span>
-                      <span className="font-mono text-red-600 font-bold text-lg">$1,000.10</span>
+                      <span className="text-gray-700 font-medium">
+                        $1,000 after 1 year:
+                      </span>
+                      <span className="font-mono text-red-600 font-bold text-lg">
+                        $1,000.10
+                      </span>
                     </div>
                     <div className="bg-white rounded-lg p-3 flex justify-between items-center">
-                      <span className="text-gray-700 font-medium">Real value (inflation):</span>
-                      <span className="font-mono text-red-600 font-bold text-lg">$968</span>
+                      <span className="text-gray-700 font-medium">
+                        Real value (inflation):
+                      </span>
+                      <span className="font-mono text-red-600 font-bold text-lg">
+                        $968
+                      </span>
                     </div>
                     <div className="bg-red-100 rounded-lg p-3 flex justify-between items-center border-2 border-red-300">
                       <span className="text-red-800 font-bold">You lose:</span>
-                      <span className="font-mono text-red-700 font-bold text-xl">-$32</span>
+                      <span className="font-mono text-red-700 font-bold text-xl">
+                        -$32
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -228,16 +244,28 @@ export default function HomePage() {
                   </h4>
                   <div className="space-y-4">
                     <div className="bg-white rounded-lg p-3 flex justify-between items-center">
-                      <span className="text-gray-700 font-medium">$1,000 after 1 year:</span>
-                      <span className="font-mono text-green-600 font-bold text-lg">$1,120</span>
+                      <span className="text-gray-700 font-medium">
+                        $1,000 after 1 year:
+                      </span>
+                      <span className="font-mono text-green-600 font-bold text-lg">
+                        $1,120
+                      </span>
                     </div>
                     <div className="bg-white rounded-lg p-3 flex justify-between items-center">
-                      <span className="text-gray-700 font-medium">Real value (inflation):</span>
-                      <span className="font-mono text-green-600 font-bold text-lg">$1,085</span>
+                      <span className="text-gray-700 font-medium">
+                        Real value (inflation):
+                      </span>
+                      <span className="font-mono text-green-600 font-bold text-lg">
+                        $1,085
+                      </span>
                     </div>
                     <div className="bg-green-100 rounded-lg p-3 flex justify-between items-center border-2 border-green-400">
-                      <span className="text-green-800 font-bold">You gain:</span>
-                      <span className="font-mono text-green-700 font-bold text-xl">+$85</span>
+                      <span className="text-green-800 font-bold">
+                        You gain:
+                      </span>
+                      <span className="font-mono text-green-700 font-bold text-xl">
+                        +$85
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -255,7 +283,9 @@ export default function HomePage() {
               <div className="mb-8">
                 <div className="inline-flex items-center justify-center mb-4">
                   <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent w-20"></div>
-                  <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mx-6">Ready to Start?</h3>
+                  <h3 className="text-2xl md:text-3xl font-bold text-gray-800 mx-6">
+                    Ready to Start?
+                  </h3>
                   <div className="h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent w-20"></div>
                 </div>
                 <p className="text-lg text-gray-600">

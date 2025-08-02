@@ -31,60 +31,90 @@ export function FinancialFreedomCalculator() {
 
     const yearlyExpenses = monthly * 12;
     const financialFreedomNumber = yearlyExpenses * 25; // 4% rule
-    
+
     // DeFi yield assumptions (conservative estimates)
-    const defiAPY = 0.065; // 6.5% APY (realistic DeFi yield)
+    const defiAPY = 0.07; // 7% APY (realistic DeFi yield)
     const bankAPY = 0.005; // 0.5% APY (traditional savings)
-    
+
     // Calculate years needed with compound interest
-    const calculateYearsToTarget = (targetAmount: number, currentAmount: number, monthlyContribution: number, annualRate: number): number => {
+    const calculateYearsToTarget = (
+      targetAmount: number,
+      currentAmount: number,
+      monthlyContribution: number,
+      annualRate: number
+    ): number => {
       if (monthlyContribution <= 0) return Infinity;
-      
+
       const monthlyRate = annualRate / 12;
       const futureValue = targetAmount;
       const presentValue = currentAmount;
       const payment = monthlyContribution;
-      
+
       if (monthlyRate === 0) {
         // Simple case: no interest
         return (futureValue - presentValue) / (payment * 12);
       }
-      
+
       // Using the future value of annuity formula to solve for time
       // FV = PV(1+r)^n + PMT[((1+r)^n - 1) / r]
       // This requires iterative solution
       let years = 0;
       let currentValue = presentValue;
-      
+
       while (currentValue < futureValue && years < 100) {
-        currentValue = currentValue * (1 + annualRate) + (payment * 12);
+        currentValue = currentValue * (1 + annualRate) + payment * 12;
         years++;
       }
-      
+
       return years;
     };
-    
-    const defiYears = calculateYearsToTarget(financialFreedomNumber, current, monthlySave, defiAPY);
-    const bankYears = calculateYearsToTarget(financialFreedomNumber, current, monthlySave, bankAPY);
-    
+
+    const defiYears = calculateYearsToTarget(
+      financialFreedomNumber,
+      current,
+      monthlySave,
+      defiAPY
+    );
+    const bankYears = calculateYearsToTarget(
+      financialFreedomNumber,
+      current,
+      monthlySave,
+      bankAPY
+    );
+
     // Calculate final amounts and compound interest
-    const calculateFinalAmounts = (years: number, currentAmount: number, monthlyContribution: number, annualRate: number) => {
+    const calculateFinalAmounts = (
+      years: number,
+      currentAmount: number,
+      monthlyContribution: number,
+      annualRate: number
+    ) => {
       let totalValue = currentAmount;
       let totalContributions = currentAmount;
-      
+
       for (let year = 0; year < years; year++) {
-        totalValue = totalValue * (1 + annualRate) + (monthlyContribution * 12);
+        totalValue = totalValue * (1 + annualRate) + monthlyContribution * 12;
         totalContributions += monthlyContribution * 12;
       }
-      
+
       return {
         totalSaved: totalValue,
-        compoundInterest: totalValue - totalContributions
+        compoundInterest: totalValue - totalContributions,
       };
     };
-    
-    const defiResults = calculateFinalAmounts(defiYears, current, monthlySave, defiAPY);
-    const bankResults = calculateFinalAmounts(bankYears, current, monthlySave, bankAPY);
+
+    const defiResults = calculateFinalAmounts(
+      defiYears,
+      current,
+      monthlySave,
+      defiAPY
+    );
+    const bankResults = calculateFinalAmounts(
+      bankYears,
+      current,
+      monthlySave,
+      bankAPY
+    );
 
     setResult({
       yearlyExpenses,
@@ -109,7 +139,8 @@ export function FinancialFreedomCalculator() {
           Financial Freedom Calculator
         </h2>
         <p className="text-sm md:text-base text-gray-600 px-4">
-          See how much faster you can reach financial freedom with DeFi vs traditional banking
+          See how much faster you can reach financial freedom with DeFi vs
+          traditional banking
         </p>
       </div>
 
@@ -215,26 +246,34 @@ export function FinancialFreedomCalculator() {
                 <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
                   <div className="flex items-center space-x-2 mb-3">
                     <TrendingUp className="w-5 h-5 text-green-600" />
-                    <h4 className="font-semibold text-green-900">With DeFi (6.5% APY)</h4>
+                    <h4 className="font-semibold text-green-900">
+                      With DeFi (6.5% APY)
+                    </h4>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div>
                       <p className="text-2xl font-bold text-green-900">
                         {result.defiYears.toFixed(1)} years
                       </p>
-                      <p className="text-sm text-green-700">Time to financial freedom</p>
+                      <p className="text-sm text-green-700">
+                        Time to financial freedom
+                      </p>
                     </div>
-                    
+
                     <div className="border-t border-green-200 pt-3">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm text-green-700">Total Saved:</span>
+                        <span className="text-sm text-green-700">
+                          Total Saved:
+                        </span>
                         <span className="font-semibold text-green-900">
                           ${result.defiTotalSaved.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-green-700">Compound Interest:</span>
+                        <span className="text-sm text-green-700">
+                          Compound Interest:
+                        </span>
                         <span className="font-semibold text-green-900">
                           ${result.defiCompoundInterest.toLocaleString()}
                         </span>
@@ -247,26 +286,34 @@ export function FinancialFreedomCalculator() {
                 <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                   <div className="flex items-center space-x-2 mb-3">
                     <DollarSign className="w-5 h-5 text-gray-600" />
-                    <h4 className="font-semibold text-gray-700">Traditional Bank (0.5% APY)</h4>
+                    <h4 className="font-semibold text-gray-700">
+                      Traditional Bank (0.5% APY)
+                    </h4>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div>
                       <p className="text-2xl font-bold text-gray-700">
                         {result.bankYears.toFixed(1)} years
                       </p>
-                      <p className="text-sm text-gray-600">Time to financial freedom</p>
+                      <p className="text-sm text-gray-600">
+                        Time to financial freedom
+                      </p>
                     </div>
-                    
+
                     <div className="border-t border-gray-200 pt-3">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm text-gray-600">Total Saved:</span>
+                        <span className="text-sm text-gray-600">
+                          Total Saved:
+                        </span>
                         <span className="font-semibold text-gray-700">
                           ${result.bankTotalSaved.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Compound Interest:</span>
+                        <span className="text-sm text-gray-600">
+                          Compound Interest:
+                        </span>
                         <span className="font-semibold text-gray-700">
                           ${result.bankCompoundInterest.toLocaleString()}
                         </span>
@@ -278,22 +325,29 @@ export function FinancialFreedomCalculator() {
 
               {/* Time Difference Highlight */}
               {result.yearDifference > 0 && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg p-4"
                 >
                   <div className="text-center">
-                    <h4 className="font-bold text-lg mb-2">🚀 DeFi Advantage</h4>
+                    <h4 className="font-bold text-lg mb-2">
+                      🚀 DeFi Advantage
+                    </h4>
                     <p className="text-2xl font-bold mb-1">
                       {result.yearDifference.toFixed(1)} years faster
                     </p>
                     <p className="text-sm opacity-90">
-                      Reach financial freedom {result.yearDifference.toFixed(1)} years earlier with DeFi yields
+                      Reach financial freedom {result.yearDifference.toFixed(1)}{" "}
+                      years earlier with DeFi yields
                     </p>
                     <div className="mt-3 text-sm opacity-90">
                       <span className="font-semibold">
-                        Extra compound interest: ${(result.defiCompoundInterest - result.bankCompoundInterest).toLocaleString()}
+                        Extra compound interest: $
+                        {(
+                          result.defiCompoundInterest -
+                          result.bankCompoundInterest
+                        ).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -307,11 +361,15 @@ export function FinancialFreedomCalculator() {
                 <ul className="text-sm text-purple-700 space-y-1">
                   <li className="flex items-start">
                     <span className="mr-2">🏦</span>
-                    <span>Deposit USDC to Aave and start earning 6.5%+ APY</span>
+                    <span>
+                      Deposit USDC to Aave and start earning 6.5%+ APY
+                    </span>
                   </li>
                   <li className="flex items-start">
                     <span className="mr-2">🤖</span>
-                    <span>Use AI-powered yield optimization for higher returns</span>
+                    <span>
+                      Use AI-powered yield optimization for higher returns
+                    </span>
                   </li>
                   <li className="flex items-start">
                     <span className="mr-2">📊</span>

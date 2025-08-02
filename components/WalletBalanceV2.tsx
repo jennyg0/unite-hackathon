@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePrivy } from "@privy-io/react-auth";
 import { useENS } from "@/hooks/useENS";
@@ -18,10 +18,14 @@ import {
   ChevronUp,
   ArrowUpRight,
   ArrowDownRight,
+  PiggyBank,
+  Target,
+  Shield,
 } from "lucide-react";
 import { use1inchData } from "@/hooks/use1inchData";
 import { getOneInchAPI, WalletBalance } from "@/lib/1inch-api";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
+import { AaveService } from "@/lib/aave-service";
 import { 
   TokenBalanceSkeleton, 
   LoadingDots,
@@ -54,7 +58,21 @@ interface PortfolioData {
   }>;
 }
 
-export default function WalletBalanceV2() {
+interface InvestmentData {
+  protocol: string;
+  asset: string;
+  balance: number;
+  balanceUsd: number;
+  apy: string;
+  earnings: number;
+  icon: string;
+}
+
+export default function WalletBalanceV2({ 
+  onTotalChange 
+}: { 
+  onTotalChange?: (total: number) => void 
+}) {
   const { user, authenticated } = usePrivy();
   const { getDisplayName, hasENS } = useENS();
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
@@ -63,6 +81,8 @@ export default function WalletBalanceV2() {
   const [showDetails, setShowDetails] = useState(false);
   const [hideBalances, setHideBalances] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [investments, setInvestments] = useState<InvestmentData[]>([]);
+  const [availableToSave, setAvailableToSave] = useState(0);
 
   const {
     walletBalances,
@@ -85,6 +105,7 @@ export default function WalletBalanceV2() {
       
       // Skip portfolio API, just fetch balances and prices
       await fetchWalletBalances(user.wallet.address);
+      
       setLastUpdated(new Date());
       
       console.log('✅ Successfully fetched wallet data');
@@ -96,19 +117,105 @@ export default function WalletBalanceV2() {
     }
   };
 
-  // Auto-refresh every 30 seconds
+  // Fetch investment data from actual wallet balances and Aave positions
+  const fetchInvestmentData = async () => {
+    try {
+      if (!user?.wallet?.address) return;
+      
+      const aaveService = new AaveService(DEFAULT_CHAIN_ID);
+      const detectedInvestments: InvestmentData[] = [];
+      let totalAvailable = 0;
+      
+      // First, check wallet balances for regular tokens and any visible aTokens
+      for (const balance of walletBalances) {
+        const balanceUsd = calculateBalanceUsd(balance);
+        const tokenBalance = parseFloat(balance.balance) / Math.pow(10, balance.token.decimals);
+        
+        // Check if this is an aToken (Aave interest-bearing token)
+        if (balance.token.symbol.startsWith('a') && balance.token.symbol.length > 1) {
+          // This is an aToken from Aave
+          const underlyingAsset = balance.token.symbol.slice(1); // Remove 'a' prefix
+          const apy = await aaveService.getSupplyAPY(underlyingAsset).catch(() => "4.5");
+          
+          detectedInvestments.push({
+            protocol: "Aave V3",
+            asset: underlyingAsset,
+            balance: tokenBalance,
+            balanceUsd: balanceUsd,
+            apy: apy,
+            earnings: (balanceUsd * parseFloat(apy)) / 100 / 12, // Monthly earnings
+            icon: "🏦"
+          });
+        } else {
+          // Regular token - add to available to save
+          totalAvailable += balanceUsd;
+        }
+      }
+      
+      // Also check for Aave positions directly (in case aTokens aren't showing in wallet)
+      try {
+        console.log('🔍 Checking direct Aave positions...');
+        const aavePositions = await aaveService.getUserAavePositions(user.wallet.address);
+        
+        for (const position of aavePositions) {
+          // Only add if we haven't already detected this position
+          const existingPosition = detectedInvestments.find(inv => 
+            inv.asset === position.asset && inv.protocol === "Aave V3"
+          );
+          
+          if (!existingPosition && parseFloat(position.balance) > 0) {
+            detectedInvestments.push({
+              protocol: "Aave V3",
+              asset: position.asset,
+              balance: parseFloat(position.balance),
+              balanceUsd: position.balanceUsd,
+              apy: position.supplyAPY,
+              earnings: (position.balanceUsd * parseFloat(position.supplyAPY)) / 100 / 12,
+              icon: "🏦"
+            });
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch direct Aave positions:', error);
+      }
+      
+      setInvestments(detectedInvestments);
+      setAvailableToSave(totalAvailable);
+      
+      if (detectedInvestments.length > 0 || totalAvailable > 0) {
+        console.log('📊 Detected investments:', detectedInvestments);
+        console.log('💰 Available to save:', totalAvailable);
+      }
+      
+    } catch (error) {
+      console.error('Failed to fetch investment data:', error);
+    }
+  };
+
+  // Auto-refresh every 2 minutes (less frequent)
   useEffect(() => {
     if (authenticated && user?.wallet?.address) {
       console.log('🔗 Wallet connected:', user.wallet.address);
       console.log('👤 User object:', user);
       fetchPortfolioData();
       
-      const interval = setInterval(fetchPortfolioData, 30000);
+      const interval = setInterval(fetchPortfolioData, 120000); // 2 minutes instead of 30s
       return () => clearInterval(interval);
     } else {
       console.log('❌ No wallet address found:', { authenticated, userWallet: user?.wallet });
     }
   }, [authenticated, user?.wallet?.address]);
+  
+  // Fetch investment data when wallet balances change (debounced)
+  useEffect(() => {
+    if (walletBalances.length > 0 && Object.keys(prices).length > 0) {
+      const timeoutId = setTimeout(() => {
+        fetchInvestmentData();
+      }, 500); // Debounce for 500ms
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [walletBalances, prices]);
 
   // Calculate USD values using fetched prices from hook
   const calculateBalanceUsd = (balance: WalletBalance): number => {
@@ -120,11 +227,17 @@ export default function WalletBalanceV2() {
     
     if (priceData && priceData.price > 0) {
       const usdValue = tokenBalance * priceData.price;
-      console.log(`💰 ${balance.token.symbol}: ${tokenBalance} tokens × $${priceData.price} = $${usdValue}`);
+      // Only log for non-trivial amounts to reduce noise
+      if (usdValue > 0.01) {
+        console.log(`💰 ${balance.token.symbol}: ${tokenBalance.toFixed(4)} tokens × $${priceData.price} = $${usdValue.toFixed(2)}`);
+      }
       return usdValue;
     }
     
-    console.warn(`⚠️ No price data for ${balance.token.symbol} (${priceKey})`);
+    // Only warn once per token to reduce console spam
+    if (tokenBalance > 0.001) {
+      console.warn(`⚠️ No price data for ${balance.token.symbol} (${priceKey})`);
+    }
     return 0;
   };
   
@@ -134,16 +247,30 @@ export default function WalletBalanceV2() {
     return priceData?.price || 0;
   };
   
-  // Calculate total value with current prices
-  const calculateTotalValue = (): number => {
+  // Calculate total value with current prices (memoized)
+  const calculatedTotalValue = useMemo(() => {
     return walletBalances.reduce((total, balance) => {
       return total + calculateBalanceUsd(balance);
     }, 0);
-  };
+  }, [walletBalances, prices]);
   
+  // Calculate total portfolio value including investments
+  const totalPortfolioValue = useMemo(() => {
+    const walletValue = calculatedTotalValue;
+    const investmentValue = investments.reduce((sum, inv) => sum + inv.balanceUsd, 0);
+    const total = walletValue + investmentValue;
+    
+    // Notify parent component of total change
+    if (onTotalChange && total > 0) {
+      onTotalChange(total);
+    }
+    
+    return total;
+  }, [calculatedTotalValue, investments, onTotalChange]);
+
   // Determine data source (portfolio API or balance API fallback)
   const displayData = portfolioData || {
-    totalValue: calculateTotalValue(),
+    totalValue: totalPortfolioValue,
     totalPnl: 0,
     totalPnlPercentage: 0,
     assets: walletBalances.map(balance => ({
@@ -354,6 +481,35 @@ export default function WalletBalanceV2() {
               <p className="text-sm text-gray-500 mt-1">Total Portfolio Value</p>
             </div>
 
+            {/* Available to Save & Total Invested */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <PiggyBank className="w-5 h-5 text-green-600" />
+                  <span className="text-sm font-medium text-green-700">Available to Save</span>
+                </div>
+                <div className="text-2xl font-bold text-green-900">
+                  {formatCurrency(availableToSave)}
+                </div>
+                <p className="text-xs text-green-600 mt-1">
+                  {availableToSave > 0 ? 'Ready to earn 4-15% APY' : 'All funds invested'}
+                </p>
+              </div>
+              
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-700">Total Invested</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-900">
+                  {formatCurrency(investments.reduce((sum, inv) => sum + inv.balanceUsd, 0))}
+                </div>
+                <p className="text-xs text-blue-600 mt-1">
+                  {investments.length > 0 ? `Earning $${investments.reduce((sum, inv) => sum + inv.earnings, 0).toFixed(2)}/month` : 'No active investments'}
+                </p>
+              </div>
+            </div>
+
             {/* Quick Stats */}
             <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
               <div className="text-center">
@@ -363,15 +519,15 @@ export default function WalletBalanceV2() {
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-sm font-medium text-gray-500">Tokens with Value</div>
+                <div className="text-sm font-medium text-gray-500">Investments</div>
                 <div className="text-lg font-semibold text-gray-900">
-                  {displayData.assets.filter(a => a.balanceUsd > 0.01).length}
+                  {investments.length}
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-sm font-medium text-gray-500">Data Source</div>
+                <div className="text-sm font-medium text-gray-500">Protocols</div>
                 <div className="text-lg font-semibold text-gray-900">
-                  {portfolioData ? "Portfolio API" : "Balance API"}
+                  {new Set(investments.map(inv => inv.protocol)).size}
                 </div>
               </div>
             </div>
@@ -384,7 +540,7 @@ export default function WalletBalanceV2() {
           className="w-full mt-4 flex items-center justify-center space-x-2 p-2 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <span className="text-sm font-medium">
-            {showDetails ? 'Hide Details' : 'View Asset Details'}
+            {showDetails ? 'Hide Details' : 'View All Assets & Investments'}
           </span>
           {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
@@ -397,9 +553,59 @@ export default function WalletBalanceV2() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="card overflow-hidden"
+            className="space-y-4 overflow-hidden"
           >
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Asset Breakdown</h4>
+            {/* Investments Section */}
+            {investments.length > 0 && (
+              <div className="card">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Shield className="w-5 h-5 text-blue-600" />
+                  <h4 className="text-lg font-semibold text-gray-900">Your Investments</h4>
+                </div>
+                
+                <div className="space-y-3">
+                  {investments.map((investment, index) => (
+                    <motion.div
+                      key={`${investment.protocol}-${investment.asset}`}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm">{investment.icon}</span>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {investment.protocol} - {investment.asset}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {formatBalance(investment.balance.toString(), 6)} {investment.asset} • {investment.apy}% APY
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-right">
+                        <div className="font-medium text-gray-900">
+                          {formatCurrency(investment.balanceUsd)}
+                        </div>
+                        <div className="text-sm text-green-600">
+                          +${investment.earnings.toFixed(2)}/mo
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Wallet Assets Section */}
+            <div className="card">
+              <div className="flex items-center space-x-2 mb-4">
+                <Wallet className="w-5 h-5 text-gray-600" />
+                <h4 className="text-lg font-semibold text-gray-900">Wallet Assets</h4>
+              </div>
             
             {loading ? (
               <div className="space-y-3">
@@ -471,6 +677,7 @@ export default function WalletBalanceV2() {
                   ))}
               </div>
             )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

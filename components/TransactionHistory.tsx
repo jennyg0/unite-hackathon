@@ -39,7 +39,7 @@ export default function TransactionHistory({
   limit = 20,
   showSummary = true,
 }: TransactionHistoryProps) {
-  const { authenticated } = usePrivy();
+  const { authenticated, user } = usePrivy();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,22 +58,50 @@ export default function TransactionHistory({
 
       setIsLoading(true);
 
-      // Disable demo mode for real users
-      transactionHistory.disableDemoMode();
-
-      // Simulate API delay for loading state
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      const allTransactions = transactionHistory.getTransactions(limit);
-      const summaryData = transactionHistory.getSummary();
-
-      setTransactions(allTransactions);
-      setSummary(summaryData);
-      setIsLoading(false);
+      try {
+        console.log('📱 Loading transaction history for user:', user?.wallet?.address);
+        
+        // Get cached transactions (from app usage) immediately
+        transactionHistory.disableDemoMode();
+        const cachedTransactions = transactionHistory.getTransactions(limit);
+        console.log('💾 Found cached transactions:', cachedTransactions.length);
+        
+        // Show cached transactions first
+        setTransactions(cachedTransactions);
+        
+        // Fetch real blockchain transactions via our backend proxy
+        if (user?.wallet?.address) {
+          console.log('🔗 Fetching real blockchain transactions via proxy...');
+          const blockchainTxs = await transactionHistory.fetchBlockchainTransactions(user.wallet.address);
+          
+          // Combine cached + blockchain transactions
+          const allTransactions = [...cachedTransactions, ...blockchainTxs]
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, limit);
+          
+          setTransactions(allTransactions);
+          console.log('✅ Final transaction count:', {
+            cached: cachedTransactions.length,
+            blockchain: blockchainTxs.length,
+            total: allTransactions.length
+          });
+        }
+        
+        const summaryData = transactionHistory.getSummary();
+        setSummary(summaryData);
+        
+      } catch (error) {
+        console.error('Failed to load transactions:', error);
+        // Fallback to cached transactions
+        const fallbackTransactions = transactionHistory.getTransactions(limit);
+        setTransactions(fallbackTransactions);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadTransactions();
-  }, [limit, authenticated]);
+  }, [limit, authenticated, user?.wallet?.address]);
 
   const filteredTransactions =
     filterType === "all"

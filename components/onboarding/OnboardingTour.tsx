@@ -26,85 +26,90 @@ interface OnboardingTourProps {
 
 const tourSteps = [
   {
-    id: 'earnings',
-    title: 'Real-time Earnings Dashboard',
-    description: 'Watch your money grow in real-time with live APY tracking',
+    id: "earnings",
+    title: "Real-time Earnings Dashboard",
+    description: "Watch your money grow in real-time with live APY tracking",
     icon: TrendingUp,
     features: [
-      'Live balance updates',
-      'Current APY display',
-      'Projected earnings',
-      'Easy deposit setup',
+      "Live balance updates",
+      "Current APY display",
+      "Projected earnings",
+      "Easy deposit setup",
     ],
-    color: 'green',
+    color: "green",
     mockData: {
-      balance: '$2,847.92',
-      apy: '12.4%',
-      earned: '$347.92',
-      projection: '$420 this month',
+      balance: "$2,847.92",
+      apy: "12.4%",
+      earned: "$347.92",
+      projection: "$420 this month",
     },
   },
   {
-    id: 'history',
-    title: 'Complete Transaction History',
-    description: 'Track every deposit, withdrawal, and earning with detailed history',
+    id: "history",
+    title: "Complete Transaction History",
+    description:
+      "Track every deposit, withdrawal, and earning with detailed history",
     icon: History,
     features: [
-      'Detailed transaction logs',
-      'Earnings breakdowns',
-      'Export capabilities',
-      'Filter and search',
+      "Detailed transaction logs",
+      "Earnings breakdowns",
+      "Export capabilities",
+      "Filter and search",
     ],
-    color: 'blue',
+    color: "blue",
     mockData: {
       recentTransactions: [
-        { type: 'Deposit', amount: '+$250', date: 'Today' },
-        { type: 'Interest', amount: '+$8.42', date: 'Yesterday' },
-        { type: 'Deposit', amount: '+$250', date: '3 days ago' },
+        { type: "Deposit", amount: "+$250", date: "Today" },
+        { type: "Interest", amount: "+$8.42", date: "Yesterday" },
+        { type: "Deposit", amount: "+$250", date: "3 days ago" },
       ],
     },
   },
   {
-    id: 'automation',
-    title: 'Smart Automation',
-    description: 'Set it and forget it - automated deposits and optimization',
+    id: "automation",
+    title: "Smart Automation",
+    description: "Set it and forget it - automated deposits and optimization",
     icon: Zap,
     features: [
-      'Automated deposits',
-      'Dollar-cost averaging',
-      'Risk optimization',
-      'Rebalancing alerts',
+      "Automated deposits",
+      "Dollar-cost averaging",
+      "Risk optimization",
+      "Rebalancing alerts",
     ],
-    color: 'purple',
+    color: "purple",
     mockData: {
-      nextDeposit: 'Tomorrow',
-      frequency: 'Weekly',
-      amount: '$250',
-      strategy: 'Balanced',
+      nextDeposit: "Tomorrow",
+      frequency: "Weekly",
+      amount: "$250",
+      strategy: "Balanced",
     },
   },
   {
-    id: 'security',
-    title: 'Bank-level Security',
-    description: 'Your funds are protected with institutional-grade security',
+    id: "security",
+    title: "Bank-level Security",
+    description: "Your funds are protected with institutional-grade security",
     icon: Shield,
     features: [
-      'Multi-sig wallets',
-      'Insurance coverage',
-      'Audit reports',
-      'Emergency controls',
+      "Multi-sig wallets",
+      "Insurance coverage",
+      "Audit reports",
+      "Emergency controls",
     ],
-    color: 'red',
+    color: "red",
     mockData: {
-      insurance: '$2M covered',
-      audits: '3 completed',
-      uptime: '99.9%',
-      protocols: '5+ integrated',
+      insurance: "$2M covered",
+      audits: "3 completed",
+      uptime: "99.9%",
+      protocols: "5+ integrated",
     },
   },
 ];
 
-export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTourProps) {
+export default function OnboardingTour({
+  onNext,
+  onBack,
+  onSkip,
+}: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const step = tourSteps[currentStep];
 
@@ -124,37 +129,41 @@ export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTou
 
   const getColorClasses = (color: string) => {
     const colors = {
-      green: 'bg-green-100 text-green-600',
-      blue: 'bg-blue-100 text-blue-600',
-      purple: 'bg-purple-100 text-purple-600',
-      red: 'bg-red-100 text-red-600',
+      green: "bg-green-100 text-green-600",
+      blue: "bg-blue-100 text-blue-600",
+      purple: "bg-purple-100 text-purple-600",
+      red: "bg-red-100 text-red-600",
     };
     return colors[color as keyof typeof colors] || colors.green;
   };
 
   const getBorderColor = (color: string) => {
     const colors = {
-      green: 'border-green-200',
-      blue: 'border-blue-200',
-      purple: 'border-purple-200',
-      red: 'border-red-200',
+      green: "border-green-200",
+      blue: "border-blue-200",
+      purple: "border-purple-200",
+      red: "border-red-200",
     };
     return colors[color as keyof typeof colors] || colors.green;
   };
 
   const renderMockContent = () => {
     switch (step.id) {
-      case 'earnings':
+      case "earnings":
         return (
           <div className="bg-gray-50 rounded-lg p-6">
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="text-center">
                 <p className="text-sm text-gray-600">Current Balance</p>
-                <p className="text-2xl font-bold text-gray-900">{step.mockData.balance}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {step.mockData.balance}
+                </p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">Current APY</p>
-                <p className="text-2xl font-bold text-green-600">{step.mockData.apy}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {step.mockData.apy}
+                </p>
               </div>
             </div>
             <div className="bg-green-50 rounded-lg p-4 border border-green-200">
@@ -169,18 +178,27 @@ export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTou
           </div>
         );
 
-      case 'history':
+      case "history":
         return (
           <div className="bg-gray-50 rounded-lg p-6">
             <h4 className="font-semibold mb-4">Recent Activity</h4>
             <div className="space-y-3">
               {step.mockData.recentTransactions?.map((tx, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-white rounded border">
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 bg-white rounded border"
+                >
                   <div>
                     <p className="font-medium">{tx.type}</p>
                     <p className="text-sm text-gray-600">{tx.date}</p>
                   </div>
-                  <p className={`font-semibold ${tx.amount.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
+                  <p
+                    className={`font-semibold ${
+                      tx.amount.startsWith("+")
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
                     {tx.amount}
                   </p>
                 </div>
@@ -189,7 +207,7 @@ export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTou
           </div>
         );
 
-      case 'automation':
+      case "automation":
         return (
           <div className="bg-gray-50 rounded-lg p-6">
             <div className="grid grid-cols-2 gap-4">
@@ -219,7 +237,7 @@ export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTou
           </div>
         );
 
-      case 'security':
+      case "security":
         return (
           <div className="bg-gray-50 rounded-lg p-6">
             <div className="grid grid-cols-2 gap-4">
@@ -263,11 +281,9 @@ export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTou
         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Sparkles className="w-10 h-10 text-green-600" />
         </div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">
-          Quick Tour
-        </h2>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">Quick Tour</h2>
         <p className="text-lg text-gray-600">
-          See what makes Compound special (30 seconds)
+          See what makes BYOB special (30 seconds)
         </p>
       </div>
 
@@ -279,10 +295,10 @@ export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTou
             onClick={() => setCurrentStep(index)}
             className={`w-3 h-3 rounded-full transition-all ${
               index === currentStep
-                ? 'bg-green-500 scale-125'
+                ? "bg-green-500 scale-125"
                 : index < currentStep
-                ? 'bg-green-300'
-                : 'bg-gray-300'
+                ? "bg-green-300"
+                : "bg-gray-300"
             }`}
           />
         ))}
@@ -299,23 +315,27 @@ export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTou
           >
             {/* Step header */}
             <div className="flex items-start space-x-4 mb-6">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center ${getColorClasses(step.color)}`}>
+              <div
+                className={`w-16 h-16 rounded-full flex items-center justify-center ${getColorClasses(
+                  step.color
+                )}`}
+              >
                 <step.icon className="w-8 h-8" />
               </div>
               <div className="flex-1">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
                   {step.title}
                 </h3>
-                <p className="text-lg text-gray-600">
-                  {step.description}
-                </p>
+                <p className="text-lg text-gray-600">{step.description}</p>
               </div>
             </div>
 
             {/* Features list */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <h4 className="font-semibold text-gray-900 mb-3">Key Features:</h4>
+                <h4 className="font-semibold text-gray-900 mb-3">
+                  Key Features:
+                </h4>
                 <ul className="space-y-2">
                   {step.features.map((feature, index) => (
                     <li key={index} className="flex items-center">
@@ -325,7 +345,7 @@ export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTou
                   ))}
                 </ul>
               </div>
-              
+
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3">Preview:</h4>
                 {renderMockContent()}
@@ -333,23 +353,43 @@ export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTou
             </div>
 
             {/* Highlight box */}
-            <div className={`rounded-lg p-4 border ${getBorderColor(step.color)} bg-gradient-to-r from-gray-50 to-white`}>
+            <div
+              className={`rounded-lg p-4 border ${getBorderColor(
+                step.color
+              )} bg-gradient-to-r from-gray-50 to-white`}
+            >
               <div className="flex items-center space-x-3">
-                <step.icon className={`w-6 h-6 ${step.color === 'green' ? 'text-green-600' : 
-                  step.color === 'blue' ? 'text-blue-600' : 
-                  step.color === 'purple' ? 'text-purple-600' : 'text-red-600'}`} />
+                <step.icon
+                  className={`w-6 h-6 ${
+                    step.color === "green"
+                      ? "text-green-600"
+                      : step.color === "blue"
+                      ? "text-blue-600"
+                      : step.color === "purple"
+                      ? "text-purple-600"
+                      : "text-red-600"
+                  }`}
+                />
                 <div>
                   <p className="font-medium text-gray-900">
-                    {step.id === 'earnings' && 'Your money works 24/7 - even while you sleep'}
-                    {step.id === 'history' && 'Full transparency - track every penny'}
-                    {step.id === 'automation' && 'Hands-off investing - maximum convenience'}
-                    {step.id === 'security' && 'Enterprise security - your funds are protected'}
+                    {step.id === "earnings" &&
+                      "Your money works 24/7 - even while you sleep"}
+                    {step.id === "history" &&
+                      "Full transparency - track every penny"}
+                    {step.id === "automation" &&
+                      "Hands-off investing - maximum convenience"}
+                    {step.id === "security" &&
+                      "Enterprise security - your funds are protected"}
                   </p>
                   <p className="text-sm text-gray-600">
-                    {step.id === 'earnings' && 'Compound interest means your earnings start earning too'}
-                    {step.id === 'history' && 'Download statements and export data anytime'}
-                    {step.id === 'automation' && 'Dollar-cost averaging reduces risk automatically'}
-                    {step.id === 'security' && 'Multi-layer protection with insurance coverage'}
+                    {step.id === "earnings" &&
+                      "Compound interest means your earnings start earning too"}
+                    {step.id === "history" &&
+                      "Download statements and export data anytime"}
+                    {step.id === "automation" &&
+                      "Dollar-cost averaging reduces risk automatically"}
+                    {step.id === "security" &&
+                      "Multi-layer protection with insurance coverage"}
                   </p>
                 </div>
               </div>
@@ -389,7 +429,9 @@ export default function OnboardingTour({ onNext, onBack, onSkip }: OnboardingTou
               className="btn-primary px-6 py-3 flex items-center space-x-2"
             >
               <span>
-                {currentStep === tourSteps.length - 1 ? 'Finish Tour' : 'Next Feature'}
+                {currentStep === tourSteps.length - 1
+                  ? "Finish Tour"
+                  : "Next Feature"}
               </span>
               <ArrowRight className="w-4 h-4" />
             </button>

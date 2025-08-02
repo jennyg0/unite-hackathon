@@ -16,9 +16,18 @@ interface GoalProgress {
   onTrack: boolean;
 }
 
-export function FinancialGoals({ onShowDeposit }: { onShowDeposit?: () => void }) {
+export function FinancialGoals({ 
+  onShowDeposit, 
+  totalBalance: providedBalance 
+}: { 
+  onShowDeposit?: () => void;
+  totalBalance?: number;
+}) {
   const { state, updateUserGoals } = useOnboarding();
-  const { totalBalance } = useWallet();
+  const { totalBalance: walletBalance } = useWallet();
+  
+  // Use provided balance if available, otherwise fall back to wallet balance
+  const totalBalance = providedBalance ?? walletBalance;
   const [emergencyGoal, setEmergencyGoal] = useState<GoalProgress | null>(null);
   const [freedomGoal, setFreedomGoal] = useState<GoalProgress | null>(null);
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -31,6 +40,14 @@ export function FinancialGoals({ onShowDeposit }: { onShowDeposit?: () => void }
   const calculateGoalProgress = () => {
     const currentBalance = totalBalance || 0;
     const monthlySavings = state.userGoals.monthlySavingsGoal || 500; // Default to $500 if not set
+    
+    // Debug logging to track balance issues
+    console.log("🎯 Financial Goals Debug:", {
+      totalBalance,
+      currentBalance,
+      monthlySavings,
+      userGoals: state.userGoals
+    });
 
     // Use actual monthly expenses if available, otherwise estimate from savings
     let monthlyExpenses = state.userGoals.monthlyExpenses;

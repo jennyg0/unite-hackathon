@@ -76,7 +76,7 @@ export default function DashboardPage() {
             <span>Loading</span>
             <LoadingDots />
           </h2>
-          <p className="text-gray-600">Initializing your compound account</p>
+          <p className="text-gray-600">Initializing your BYOB account</p>
         </motion.div>
       </div>
     );
@@ -263,6 +263,7 @@ function MainPortfolioView({
   onToggleHistory: () => void;
 }) {
   const { getDisplayName, hasENS } = useENS();
+  const [portfolioTotal, setPortfolioTotal] = useState<number>(0);
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -296,7 +297,10 @@ function MainPortfolioView({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <FinancialGoals onShowDeposit={onShowAutomateDeposit} />
+        <FinancialGoals 
+          onShowDeposit={onShowAutomateDeposit} 
+          totalBalance={portfolioTotal}
+        />
       </motion.div>
 
       {/* Current Portfolio Balance - Clean, single section */}
@@ -306,7 +310,7 @@ function MainPortfolioView({
         transition={{ delay: 0.2 }}
       >
         <ErrorBoundary>
-          <WalletBalanceV2 />
+          <WalletBalanceV2 onTotalChange={setPortfolioTotal} />
         </ErrorBoundary>
       </motion.div>
 
@@ -328,7 +332,7 @@ function MainPortfolioView({
           </div>
         </button>
         <p className="text-sm text-gray-600 mt-2">
-          Start earning 8-15% APY with smart DeFi strategies
+          Start earning 4-15% APY with smart DeFi strategies
         </p>
       </motion.div>
 

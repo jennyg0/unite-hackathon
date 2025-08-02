@@ -15,6 +15,7 @@ import { use1inchData } from "@/hooks/use1inchData";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
 import { usePrivy } from "@privy-io/react-auth";
 import { getOneInchCharts, ChartDataPoint } from "@/lib/1inch-charts";
+import { AaveService } from "@/lib/aave-service";
 
 interface PortfolioDataPoint {
   timestamp: number;
@@ -29,6 +30,7 @@ export function SimplePortfolioChart() {
   const [selectedPeriod, setSelectedPeriod] = useState<'1D' | '1W' | '1M' | '3M'>('1W');
   const [isLoading, setIsLoading] = useState(false);
   const [usingRealData, setUsingRealData] = useState(false);
+  const [liveAPY, setLiveAPY] = useState<string>('8.5%');
 
   const {
     totalWalletValue,
@@ -108,62 +110,13 @@ export function SimplePortfolioChart() {
     }
   };
 
-  // Generate sample portfolio growth data based on current value
-  const generatePortfolioHistory = () => {
-    const now = Date.now();
-    const periods = {
-      '1D': { points: 24, interval: 60 * 60 * 1000 }, // Hourly for 1 day
-      '1W': { points: 7, interval: 24 * 60 * 60 * 1000 }, // Daily for 1 week
-      '1M': { points: 30, interval: 24 * 60 * 60 * 1000 }, // Daily for 1 month
-      '3M': { points: 90, interval: 24 * 60 * 60 * 1000 }, // Daily for 3 months
-    };
-
-    const { points, interval } = periods[selectedPeriod];
-    const currentValue = totalWalletValue || 1000; // Use real value or default
-    const data: PortfolioDataPoint[] = [];
-
-    // Simulate growth over time with some volatility
-    let baseValue = currentValue * 0.8; // Start 20% lower to show growth
-    const growthRate = 0.08 / 365; // 8% annual growth
-    
-    for (let i = 0; i < points; i++) {
-      const timestamp = now - (points - i - 1) * interval;
-      
-      // Add growth trend
-      baseValue *= (1 + growthRate * (interval / (24 * 60 * 60 * 1000)));
-      
-      // Add some volatility (±2%)
-      const volatility = (Math.random() - 0.5) * 0.04;
-      const value = baseValue * (1 + volatility);
-      
-      // Simulate deposits and earnings split
-      const totalGrowth = value - (currentValue * 0.8);
-      const deposits = totalGrowth * 0.7; // 70% from deposits
-      const earnings = totalGrowth * 0.3; // 30% from earnings
-      
-      data.push({
-        timestamp,
-        value: Math.max(value, 0),
-        deposits: Math.max(deposits, 0),
-        earnings: Math.max(earnings, 0),
-      });
-    }
-
-    // Ensure the last point matches current value
-    if (data.length > 0) {
-      data[data.length - 1].value = currentValue;
-    }
-
-    return data;
-  };
 
   useEffect(() => {
     if (authenticated && user?.wallet?.address) {
       setIsLoading(true);
       fetchWalletBalances(user.wallet.address).then(async () => {
-        console.log('🔄 Attempting to fetch real portfolio data using 1inch Charts API...');
+        console.log('🔄 Fetching real portfolio data using 1inch Charts API...');
         
-        // Try to fetch real data first
         const realData = await fetchRealPortfolioData();
         
         if (realData && realData.length > 0) {
@@ -171,19 +124,27 @@ export function SimplePortfolioChart() {
           setPortfolioHistory(realData);
           setUsingRealData(true);
         } else {
-          console.log('⚠️ Real data unavailable, using simulated growth data');
-          const simulatedData = generatePortfolioHistory();
-          setPortfolioHistory(simulatedData);
+          console.log('❌ No chart data available');
+          setPortfolioHistory([]);
           setUsingRealData(false);
         }
         
         setIsLoading(false);
-      }).catch(() => {
-        console.log('❌ Wallet fetch failed, using simulated data');
-        const simulatedData = generatePortfolioHistory();
-        setPortfolioHistory(simulatedData);
+      }).catch((error) => {
+        console.error('❌ Failed to fetch wallet data:', error);
+        setPortfolioHistory([]);
         setUsingRealData(false);
         setIsLoading(false);
+      });
+
+      // Fetch live APY from Aave
+      const aaveService = new AaveService(DEFAULT_CHAIN_ID);
+      aaveService.getSupplyAPY('USDC').then((apy) => {
+        if (apy && apy !== '0') {
+          setLiveAPY(`${apy}%`);
+        }
+      }).catch((error) => {
+        console.error('Failed to fetch live APY:', error);
       });
     }
   }, [authenticated, user?.wallet?.address, selectedPeriod]);
@@ -234,8 +195,8 @@ export function SimplePortfolioChart() {
                 Live Data
               </span>
             ) : (
-              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                Simulated
+              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">
+                No Data
               </span>
             )}
           </div>
@@ -301,7 +262,7 @@ export function SimplePortfolioChart() {
             </div>
             <div>
               <p className="text-sm text-purple-700">Estimated APY</p>
-              <p className="text-xl font-bold text-purple-900">8.5%</p>
+              <p className="text-xl font-bold text-purple-900">{liveAPY}</p>
             </div>
           </div>
         </div>
@@ -340,7 +301,7 @@ export function SimplePortfolioChart() {
           <div className="flex items-center justify-center h-32">
             <RefreshCw className="w-6 h-6 text-gray-400 animate-spin" />
           </div>
-        ) : (
+        ) : portfolioHistory.length > 1 ? (
           <div className="relative h-32">
             {/* Chart area */}
             <svg className="absolute inset-0 w-full h-full">
@@ -351,54 +312,53 @@ export function SimplePortfolioChart() {
                 </linearGradient>
               </defs>
               
-              {portfolioHistory.length > 1 && (
-                <>
-                  {/* Generate path for portfolio line */}
-                  <path
-                    d={portfolioHistory.map((point, index) => {
-                      const x = (index / (portfolioHistory.length - 1)) * 100;
-                      const minValue = Math.min(...portfolioHistory.map(p => p.value));
-                      const maxValue = Math.max(...portfolioHistory.map(p => p.value));
-                      const valueRange = maxValue - minValue || 1;
-                      const y = 100 - ((point.value - minValue) / valueRange) * 80;
-                      return `${index === 0 ? 'M' : 'L'} ${x}% ${y}%`;
-                    }).join(' ')}
-                    stroke="#10B981"
-                    strokeWidth="2"
-                    fill="none"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  
-                  {/* Area fill */}
-                  <path
-                    d={(() => {
-                      const pathCommands = portfolioHistory.map((point, index) => {
-                        const x = (index / (portfolioHistory.length - 1)) * 100;
-                        const minValue = Math.min(...portfolioHistory.map(p => p.value));
-                        const maxValue = Math.max(...portfolioHistory.map(p => p.value));
-                        const valueRange = maxValue - minValue || 1;
-                        const y = 100 - ((point.value - minValue) / valueRange) * 80;
-                        return `${index === 0 ? 'M' : 'L'} ${x}% ${y}%`;
-                      });
-                      return [...pathCommands, `L 100% 100% L 0% 100% Z`].join(' ');
-                    })()}
-                    fill="url(#portfolioGradient)"
-                  />
-                </>
-              )}
+              {/* Generate path for portfolio line */}
+              <path
+                d={portfolioHistory.map((point, index) => {
+                  const x = (index / (portfolioHistory.length - 1)) * 100;
+                  const minValue = Math.min(...portfolioHistory.map(p => p.value));
+                  const maxValue = Math.max(...portfolioHistory.map(p => p.value));
+                  const valueRange = maxValue - minValue || 1;
+                  const y = 100 - ((point.value - minValue) / valueRange) * 80;
+                  return `${index === 0 ? 'M' : 'L'} ${x}% ${y}%`;
+                }).join(' ')}
+                stroke="#10B981"
+                strokeWidth="2"
+                fill="none"
+                vectorEffect="non-scaling-stroke"
+              />
+              
+              {/* Area fill */}
+              <path
+                d={(() => {
+                  const pathCommands = portfolioHistory.map((point, index) => {
+                    const x = (index / (portfolioHistory.length - 1)) * 100;
+                    const minValue = Math.min(...portfolioHistory.map(p => p.value));
+                    const maxValue = Math.max(...portfolioHistory.map(p => p.value));
+                    const valueRange = maxValue - minValue || 1;
+                    const y = 100 - ((point.value - minValue) / valueRange) * 80;
+                    return `${index === 0 ? 'M' : 'L'} ${x}% ${y}%`;
+                  });
+                  return [...pathCommands, `L 100% 100% L 0% 100% Z`].join(' ');
+                })()}
+                fill="url(#portfolioGradient)"
+              />
+
             </svg>
 
             {/* Value labels */}
-            {portfolioHistory.length > 0 && (
-              <>
-                <div className="absolute top-0 left-0 text-xs text-gray-500">
-                  ${Math.max(...portfolioHistory.map(p => p.value)).toFixed(0)}
-                </div>
-                <div className="absolute bottom-0 left-0 text-xs text-gray-500">
-                  ${Math.min(...portfolioHistory.map(p => p.value)).toFixed(0)}
-                </div>
-              </>
-            )}
+            <div className="absolute top-0 left-0 text-xs text-gray-500">
+              ${Math.max(...portfolioHistory.map(p => p.value)).toFixed(0)}
+            </div>
+            <div className="absolute bottom-0 left-0 text-xs text-gray-500">
+              ${Math.min(...portfolioHistory.map(p => p.value)).toFixed(0)}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+            <BarChart3 className="w-8 h-8 mb-2" />
+            <p className="text-sm">No chart data available</p>
+            <p className="text-xs">Try a different time period</p>
           </div>
         )}
       </div>
