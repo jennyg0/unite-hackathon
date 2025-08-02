@@ -56,10 +56,11 @@ export function useWallet() {
     }
   }, [authenticated, user?.wallet?.address]);
 
-  // Calculate balance properly from actual wallet data
+  // Calculate total balance including wallet + investments
   const calculateActualBalance = () => {
     console.log("🔍 Balance calculation debug:", {
       totalWalletValue,
+      aaveInvestments,
       walletBalancesCount: walletBalances.length,
       walletBalances: walletBalances.map(b => ({
         symbol: b.token.symbol,
@@ -70,14 +71,15 @@ export function useWallet() {
       }))
     });
 
+    let walletTotal = 0;
+
     // If 1inch API has data, use it
     if (totalWalletValue > 0) {
       console.log("✅ Using 1inch API balance:", totalWalletValue);
-      return totalWalletValue;
+      walletTotal = totalWalletValue;
     }
-
     // If 1inch fails, calculate manually from token balances  
-    if (walletBalances.length > 0) {
+    else if (walletBalances.length > 0) {
       const manualTotal = walletBalances.reduce((total, balance) => {
         // USE THE ACTUAL USD VALUE FROM THE API - NOT TOKEN AMOUNT
         const usdValue = balance.balanceUsd || 0;
@@ -85,21 +87,26 @@ export function useWallet() {
         return total + usdValue;
       }, 0);
       console.log("✅ Manual balance calculation:", manualTotal.toFixed(2));
-      return manualTotal;
+      walletTotal = manualTotal;
     }
 
-    console.log("❌ No balance data available");
-    return 0;
+    // Add Aave investments to total
+    const totalWithInvestments = walletTotal + aaveInvestments;
+    console.log(`🏦 Total balance: $${walletTotal.toFixed(2)} wallet + $${aaveInvestments.toFixed(2)} investments = $${totalWithInvestments.toFixed(2)}`);
+    
+    return totalWithInvestments;
   };
 
   return {
     totalBalance: calculateActualBalance(),
     walletBalances,
+    aaveInvestments,
     isLoading,
     error,
     refreshBalance: () => {
       if (user?.wallet?.address) {
         fetchWalletBalances(user.wallet.address);
+        fetchAaveInvestments();
       }
     }
   };

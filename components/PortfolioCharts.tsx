@@ -149,8 +149,16 @@ export default function PortfolioCharts({ tokens }: PortfolioChartsProps) {
         } catch (error) {
           console.error(`Failed to fetch chart for ${token.symbol}:`, error);
           
-          // Generate demo data for failed requests
-          return generateDemoChartData(token);
+          return {
+            token: {
+              address: token.address,
+              symbol: token.symbol,
+            },
+            data: [],
+            currentPrice: 0,
+            change24h: 0,
+            changePercent: 0,
+          };
         }
       });
 
@@ -159,63 +167,12 @@ export default function PortfolioCharts({ tokens }: PortfolioChartsProps) {
     } catch (error) {
       console.error('Failed to fetch chart data:', error);
       setError('Failed to load chart data');
-      
-      // Generate demo data as fallback
-      const demoData = displayTokens.map(generateDemoChartData);
-      setChartData(demoData);
+      setChartData([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const generateDemoChartData = (token: any): TokenChartData => {
-    const points = selectedPeriod === '1h' ? 60 : 
-                   selectedPeriod === '4h' ? 48 : 
-                   selectedPeriod === '1d' ? 24 : 
-                   selectedPeriod === '1w' ? 168 : 720;
-
-    const basePrice = token.symbol === 'USDC' ? 1.0 : 
-                      token.symbol === 'WETH' ? 4000 :
-                      token.symbol === 'WMATIC' ? 0.8 : 100;
-
-    const data: ChartDataPoint[] = [];
-    const now = Date.now();
-    const interval = selectedPeriod === '1h' ? 60000 : 
-                     selectedPeriod === '4h' ? 300000 :
-                     selectedPeriod === '1d' ? 3600000 :
-                     selectedPeriod === '1w' ? 3600000 :
-                     3600000;
-
-    for (let i = 0; i < points; i++) {
-      const timestamp = now - (points - i) * interval;
-      const volatility = token.symbol === 'USDC' ? 0.001 : 0.05;
-      const trend = Math.sin(i / points * Math.PI * 2) * 0.02;
-      const noise = (Math.random() - 0.5) * volatility;
-      const price = basePrice * (1 + trend + noise);
-      
-      data.push({
-        timestamp,
-        price: Math.max(price, 0.001),
-        volume: Math.random() * 1000000
-      });
-    }
-
-    const currentPrice = data[data.length - 1].price;
-    const previousPrice = data[0].price;
-    const change24h = currentPrice - previousPrice;
-    const changePercent = (change24h / previousPrice) * 100;
-
-    return {
-      token: {
-        address: token.address,
-        symbol: token.symbol,
-      },
-      data,
-      currentPrice,
-      change24h,
-      changePercent,
-    };
-  };
 
   const calculatePortfolioValue = () => {
     return displayTokens.reduce((total, token, index) => {
@@ -572,22 +529,31 @@ function IndividualCharts({ chartData }: { chartData: TokenChartData[] }) {
           
           {/* Mini Chart Visualization */}
           <div className="h-24 flex items-end space-x-1">
-            {chart.data.slice(-20).map((point, i) => {
-              const height = Math.max(((point.price - Math.min(...chart.data.map(p => p.price))) / 
-                (Math.max(...chart.data.map(p => p.price)) - Math.min(...chart.data.map(p => p.price)))) * 100, 5);
-              
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ height: 0 }}
-                  animate={{ height: `${height}%` }}
-                  transition={{ delay: i * 0.05, duration: 0.3 }}
-                  className={`flex-1 rounded-t ${
-                    chart.changePercent >= 0 ? 'bg-green-400' : 'bg-red-400'
-                  }`}
-                />
-              );
-            })}
+            {chart.data.length > 0 ? (
+              chart.data.slice(-20).map((point, i) => {
+                const height = Math.max(((point.price - Math.min(...chart.data.map(p => p.price))) / 
+                  (Math.max(...chart.data.map(p => p.price)) - Math.min(...chart.data.map(p => p.price)))) * 100, 5);
+                
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ height: 0 }}
+                    animate={{ height: `${height}%` }}
+                    transition={{ delay: i * 0.05, duration: 0.3 }}
+                    className={`flex-1 rounded-t ${
+                      chart.changePercent >= 0 ? 'bg-green-400' : 'bg-red-400'
+                    }`}
+                  />
+                );
+              })
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-gray-400">
+                <div className="text-center">
+                  <LineChart className="w-6 h-6 mx-auto mb-1" />
+                  <p className="text-xs">No data</p>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       ))}

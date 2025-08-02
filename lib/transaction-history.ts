@@ -225,6 +225,7 @@ class TransactionHistoryService {
   private transactions: Transaction[] = [];
   private initialized = false;
   private demoMode = false;
+  private storageKey = 'byob_user_transactions';
 
   // Enable demo mode for testing
   enableDemoMode() {
@@ -239,12 +240,257 @@ class TransactionHistoryService {
     this.initialized = false;
   }
 
+  // Load user transactions from localStorage
+  private loadUserTransactions(): Transaction[] {
+    if (typeof window === 'undefined') return [];
+    
+    try {
+      const stored = localStorage.getItem(this.storageKey);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Failed to load user transactions:', error);
+      return [];
+    }
+  }
+
+  // Save user transactions to localStorage
+  private saveUserTransactions(transactions: Transaction[]) {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(transactions));
+    } catch (error) {
+      console.error('Failed to save user transactions:', error);
+    }
+  }
+
   init() {
     if (!this.initialized) {
-      if (this.demoMode) {
-        this.transactions = generateDemoHistory();
-      }
+      // Only load cached transactions on init
+      // Real blockchain transactions will be fetched async
+      const userTransactions = this.loadUserTransactions();
+      this.transactions = userTransactions;
+      
+      console.log('📚 Loaded cached transactions:', userTransactions.length);
       this.initialized = true;
+    }
+  }
+
+  // Fetch real blockchain transactions using our backend proxy to 1inch History API
+  async fetchBlockchainTransactions(userAddress: string): Promise<Transaction[]> {
+    try {
+      console.log('🔗 Fetching transactions via backend proxy for:', userAddress);
+      
+      // Use our backend proxy to call 1inch History API (bypasses CORS and handles auth)
+      const chainId = 137; // Polygon
+      const now = Date.now();
+      const oneMonthAgo = now - (30 * 24 * 60 * 60 * 1000); // 30 days ago
+      
+      const params = new URLSearchParams({
+        limit: '100',
+        chainId: chainId.toString(),
+        toTimestampMs: now.toString(),
+        fromTimestampMs: oneMonthAgo.toString(),
+      });
+      
+      // Call our backend proxy instead of 1inch API directly
+      const proxyUrl = `/api/1inch/history/v2.0/history/${userAddress}/events?${params}`;
+      console.log('📡 Calling backend proxy:', proxyUrl);
+      
+      const response = await fetch(proxyUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      console.log('📡 Backend proxy response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Backend proxy error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorText
+        });
+        return [];
+      }
+      
+      const data = await response.json();
+      console.log('📊 1inch History API response via proxy:', data);
+      
+      if (!data.items || !Array.isArray(data.items)) {
+        console.log('ℹ️ No transaction events found in 1inch History API response');
+        return [];
+      }
+      
+      const transactions = data.items.map((event: any) => this.parse1inchEvent(event)).filter(Boolean);
+      
+      console.log('✅ Parsed 1inch transactions via proxy:', transactions.length);
+      return transactions;
+      
+    } catch (error) {
+      console.error('Failed to fetch transactions via backend proxy:', error);
+      return [];
+    }
+  }
+
+  // Parse 1inch History API event into our transaction format
+  private parse1inchEvent(event: any): Transaction | null {
+    try {
+      console.log('🔍 Parsing 1inch event:', JSON.stringify(event, null, 2));
+      
+      // Skip unimportant transaction types
+      const eventType = event.details?.type;
+      if (eventType === 'Approve') {
+        console.log('⏭️ Skipping approval transaction');
+        return null; // Skip approvals as they're not meaningful to users
+      }
+      
+      // Only show important transactions
+      const importantTypes = ['AddLiquidity', 'RemoveLiquidity', 'Swap', 'Transfer', 'Deposit', 'Withdrawal'];
+      const isIncoming = event.direction === 'in';
+      const isOutgoing = event.direction === 'out';
+      
+      // Skip if not an important type and not incoming
+      if (!importantTypes.includes(eventType) && !isIncoming) {
+        console.log(`⏭️ Skipping unimportant transaction type: ${eventType}`);
+        return null;
+      }
+      
+      // Extract basic event data
+      const timestamp = event.timeMs || Date.now();
+      const txHash = event.details?.txHash;
+      const tokenActions = event.details?.tokenActions || [];
+      
+      if (tokenActions.length === 0) {
+        console.log('⏭️ Skipping transaction with no token actions');
+        return null;
+      }
+      
+      // Get the main token action
+      const mainAction = tokenActions[0];
+      const tokenAddress = mainAction.address;
+      const amount = mainAction.amount || '0';
+      
+      // Map token addresses to symbols (common Polygon tokens)
+      const tokenMap: Record<string, {symbol: string, name: string, decimals: number}> = {
+        '0x2791bca1f2de4661ed88a30c99a7a9449aa84174': { symbol: 'USDC.e', name: 'USD Coin (PoS)', decimals: 6 },
+        '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359': { symbol: 'USDC', name: 'USD Coin', decimals: 6 },
+        '0xc2132d05d31c914a87c6611c10748aeb04b58e8f': { symbol: 'USDT', name: 'Tether USD (PoS)', decimals: 6 },
+        '0x8f3cf7ad23cd3cadbdf9735aff958023239c6a063': { symbol: 'DAI', name: 'Dai Stablecoin (PoS)', decimals: 18 },
+        '0x7ceb23fd6f88dd4e85e598d4c4ca8c2b7cf1ee83': { symbol: 'WETH', name: 'Wrapped Ether', decimals: 18 },
+        '0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270': { symbol: 'WMATIC', name: 'Wrapped Matic', decimals: 18 },
+      };
+      
+      const tokenInfo = tokenMap[tokenAddress.toLowerCase()] || {
+        symbol: 'UNKNOWN',
+        name: 'Unknown Token',
+        decimals: 18
+      };
+      
+      // Determine transaction type and description
+      let type: Transaction['type'] = 'deposit';
+      let description = '';
+      
+      if (eventType === 'AddLiquidity') {
+        type = 'deposit';
+        const formattedAmount = this.formatTokenAmountFromString(amount, tokenInfo.decimals, tokenInfo.symbol);
+        
+        // Check if this is to Aave (liquidity provision to Aave = deposit)
+        const aavePool = '0x794a61358d6845594f94dc1db02a252b5b4814ad';
+        if (mainAction.toAddress?.toLowerCase() === aavePool.toLowerCase()) {
+          description = `Deposited ${formattedAmount} to Aave V3`;
+        } else {
+          description = `Added ${formattedAmount} liquidity`;
+        }
+      } else if (eventType === 'RemoveLiquidity') {
+        type = 'withdrawal';
+        const formattedAmount = this.formatTokenAmountFromString(amount, tokenInfo.decimals, tokenInfo.symbol);
+        description = `Withdrew ${formattedAmount} from liquidity`;
+      } else if (eventType === 'Swap') {
+        type = 'cross_chain_swap';
+        const formattedAmount = this.formatTokenAmountFromString(amount, tokenInfo.decimals, tokenInfo.symbol);
+        description = `Swapped ${formattedAmount}`;
+      } else if (isIncoming) {
+        type = 'deposit';
+        const formattedAmount = this.formatTokenAmountFromString(amount, tokenInfo.decimals, tokenInfo.symbol);
+        description = `Received ${formattedAmount}`;
+      } else {
+        type = 'deposit';
+        const formattedAmount = this.formatTokenAmountFromString(amount, tokenInfo.decimals, tokenInfo.symbol);
+        description = `${eventType} ${formattedAmount}`;
+      }
+      
+      // Calculate USD value (simplified - in production you'd get real prices)
+      const amountNum = parseFloat(amount) / Math.pow(10, tokenInfo.decimals);
+      let amountUsd = 0;
+      if (tokenInfo.symbol.includes('USDC') || tokenInfo.symbol.includes('USDT') || tokenInfo.symbol.includes('DAI')) {
+        amountUsd = amountNum; // Stablecoins ≈ $1
+      }
+      
+      return {
+        id: `oneinch_${txHash}_${timestamp}`,
+        type,
+        status: event.details?.status === 'completed' ? 'completed' : 'pending',
+        amount: amount.toString(),
+        amountUsd: amountUsd,
+        token: {
+          symbol: tokenInfo.symbol,
+          name: tokenInfo.name,
+          address: tokenAddress,
+          decimals: tokenInfo.decimals,
+          logoURI: undefined
+        },
+        txHash: txHash,
+        timestamp: timestamp,
+        description
+      };
+      
+    } catch (error) {
+      console.error('Failed to parse 1inch event:', error);
+      return null;
+    }
+  }
+  
+  // Helper function to format token amounts from string
+  private formatTokenAmountFromString(amount: string, decimals: number, symbol: string): string {
+    try {
+      const amountNum = parseFloat(amount) / Math.pow(10, decimals);
+      
+      // Format with appropriate decimal places
+      if (amountNum < 0.001) {
+        return `${amountNum.toFixed(6)} ${symbol}`;
+      } else if (amountNum < 1) {
+        return `${amountNum.toFixed(4)} ${symbol}`;
+      } else {
+        return `${amountNum.toFixed(2)} ${symbol}`;
+      }
+    } catch (error) {
+      return `${amount} ${symbol}`;
+    }
+  }
+  
+  // Helper function to format token amounts
+  private formatTokenAmount(amount: string | number, token: any): string {
+    if (!amount || !token) return '0 UNKNOWN';
+    
+    try {
+      const decimals = token.decimals || 18;
+      const symbol = token.symbol || 'UNKNOWN';
+      const amountNum = parseFloat(amount.toString()) / Math.pow(10, decimals);
+      
+      // Format with appropriate decimal places
+      if (amountNum < 0.001) {
+        return `${amountNum.toFixed(6)} ${symbol}`;
+      } else if (amountNum < 1) {
+        return `${amountNum.toFixed(4)} ${symbol}`;
+      } else {
+        return `${amountNum.toFixed(2)} ${symbol}`;
+      }
+    } catch (error) {
+      return `${amount} ${token.symbol || 'UNKNOWN'}`;
     }
   }
 
@@ -314,8 +560,51 @@ class TransactionHistoryService {
       timestamp: Date.now()
     };
     
+    // Add to beginning of array (most recent first)
     this.transactions.unshift(newTransaction);
+    
+    // Save user transactions to localStorage
+    const userTransactions = this.transactions.filter(tx => tx.id.startsWith('user_'));
+    this.saveUserTransactions(userTransactions);
+    
+    // Log the transaction
+    console.log('📝 Added new transaction:', newTransaction);
+    
     return newTransaction;
+  }
+
+  // Add a real Aave deposit transaction
+  addAaveDeposit(
+    amount: string, 
+    amountUsd: number, 
+    txHash: string,
+    userAddress: string
+  ): Transaction {
+    return this.addTransaction({
+      type: 'deposit',
+      status: 'completed',
+      amount: amount,
+      amountUsd: amountUsd,
+      token: {
+        symbol: 'USDC',
+        name: 'USD Coin',
+        address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', // Native USDC on Polygon
+        decimals: 6,
+        logoURI: 'https://wallet-asset.matic.network/img/tokens/usdc.svg'
+      },
+      txHash: txHash,
+      description: `Deposit to Aave V3 - Earning 4.5% APY`,
+      apy: 4.5,
+      toChain: { id: 137, name: 'Polygon' }
+    });
+  }
+
+  // Get transactions for a specific user (in future, filter by wallet address)
+  getTransactionsForUser(userAddress?: string, limit?: number): Transaction[] {
+    this.init();
+    // For now, return all transactions
+    // In future, filter by user address stored in transaction
+    return limit ? this.transactions.slice(0, limit) : this.transactions;
   }
 }
 

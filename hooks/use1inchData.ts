@@ -138,8 +138,14 @@ export function use1inchData(options: Use1inchDataOptions = {}) {
     } catch (err) {
       console.error('❌ Failed to fetch wallet balances:', err);
       setErrorState('balances', err instanceof Error ? err.message : 'Failed to fetch balances');
-      // Set empty array to prevent undefined errors
-      setWalletBalances([]);
+      
+      // Set empty array to prevent undefined errors, but try to maintain any existing data
+      if (walletBalances.length === 0) {
+        console.log("⚠️ No existing balances, setting to empty array");
+        setWalletBalances([]);
+      } else {
+        console.log("⚡ Keeping existing balances to prevent data loss");
+      }
     } finally {
       setLoadingState('balances', false);
     }
@@ -284,7 +290,9 @@ export function use1inchData(options: Use1inchDataOptions = {}) {
 
   // Computed values
   const totalWalletValue = useMemo(() => {
-    return walletBalances.reduce((total, balance) => total + balance.balanceUsd, 0);
+    const total = walletBalances.reduce((total, balance) => total + balance.balanceUsd, 0);
+    console.log("💰 Calculated totalWalletValue:", total, "from", walletBalances.length, "tokens");
+    return total;
   }, [walletBalances]);
 
   const isLoading = useMemo(() => {
