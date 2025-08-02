@@ -1,22 +1,16 @@
 import { useState, useEffect } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { parseUnits, Address } from 'viem';
-import { writeContract } from '@wagmi/core';
-import { createGelatoAutomation } from '@/lib/gelato-automation';
 import { ethers } from 'ethers';
-import { get1inchRPC, getUSDCBalance, formatBalance } from '@/lib/1inch-rpc';
 import { 
-  CONTRACTS, 
-  DEPOSIT_FREQUENCIES, 
-  ABIS, 
-  DEFAULT_CHAIN_ID,
-  getUSDCAddress,
   type DepositFrequency,
   APP_CONFIG
 } from '@/lib/constants';
 
-// AutomatedDeposits contract address on Polygon
-const AUTOMATED_DEPOSITS_ADDRESS = '0x40D8364e7FB4BF12870f5ADBA5DAe206354bD6ED' as Address;
+// Backend API configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+// Simplified auto deposit contract address
+const SIMPLE_AUTO_DEPOSIT_ADDRESS = '0x40D8364e7FB4BF12870f5ADBA5DAe206354bD6ED';
 
 interface DepositConfig {
   amount: number;
@@ -109,22 +103,12 @@ export function useAutomatedDeposits() {
     setState(prev => ({ ...prev, error: null }));
 
     try {
-      console.log('🤖 Creating real on-chain deposit schedule...');
+      console.log('🤖 Setting up simplified auto deposit with backend API...');
       
       const userAddress = user.wallet.address;
-      const usdcAddress = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'; // Native USDC
-      const contractAddress = AUTOMATED_DEPOSITS_ADDRESS;
-      const aavePoolAddress = '0x794a61358D6845594F94dc1DB02A252b5b4814aD'; // Default recipient
+      const usdcAddress = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'; // Native USDC on Polygon
       
-      console.log('📋 Schedule parameters:', {
-        userAddress,
-        token: usdcAddress,
-        amount: config.amount,
-        frequency: config.frequency,
-        contract: contractAddress
-      });
-
-      // Get wallet for provider
+      // First: Get user approval for the simplified contract
       const wallet = wallets[0];
       if (!wallet) {
         throw new Error('No wallet connected');
@@ -132,74 +116,114 @@ export function useAutomatedDeposits() {
       
       const provider = await wallet.getEthereumProvider();
       
-      // Convert frequency to seconds
-      const frequencyMap = {
-        'daily': 86400,
-        'weekly': 604800, 
-        'monthly': 2592000
-      };
-      const frequencySeconds = frequencyMap[config.frequency] || 86400;
-      
       // Convert amount to wei (USDC has 6 decimals)
       const amountWei = BigInt(Math.floor(config.amount * 1000000));
       
-      console.log('🔨 Building createSchedule transaction...', {
-        token: usdcAddress,
-        amount: amountWei.toString(),
-        frequency: frequencySeconds,
-        recipient: aavePoolAddress
-      });
+      console.log('🔐 Requesting USDC approval for auto deposits...');
       
-      // Build the createSchedule transaction using ethers interface
-      const contractInterface = new ethers.Interface([
-        "function createSchedule(address token, uint256 amount, uint256 frequency, address recipient) returns (uint256)"
-      ]);
-      
-      const createScheduleData = contractInterface.encodeFunctionData("createSchedule", [
-        usdcAddress,
-        amountWei,
-        frequencySeconds,
-        aavePoolAddress
-      ]);
-      
-      const transactionRequest = {
+      // Build approval transaction for the simplified contract
+      const approvalData = `0x095ea7b3${SIMPLE_AUTO_DEPOSIT_ADDRESS
+        .slice(2)
+        .padStart(64, "0")}${(amountWei * BigInt(365)) // Approve enough for a year
+        .toString(16)
+        .padStart(64, "0")}`;
+
+      const approvalRequest = {
         from: userAddress,
-        to: contractAddress,
-        data: createScheduleData,
-        value: '0x0',
-        gas: '0x493E0', // 300,000 gas limit
+        to: usdcAddress,
+        data: approvalData,
+        value: "0x0",
+        gas: "0x186A0", // 100,000 gas limit
       };
+
+      console.log('📋 Requesting approval transaction...');
       
-      console.log('📋 Transaction request:', transactionRequest);
-      console.log('🚀 Sending createSchedule transaction...');
-      
-      // Send the transaction using MetaMask
-      const txHash = await provider.request({
+      const approvalTxHash = await provider.request({
         method: "eth_sendTransaction",
-        params: [transactionRequest],
+        params: [approvalRequest],
       });
       
-      console.log('✅ Schedule creation transaction sent:', txHash);
+      console.log('✅ Approval transaction sent:', approvalTxHash);
+      console.log('⏳ Waiting for approval confirmation...');
       
-      // Wait for transaction confirmation
-      console.log('⏳ Waiting for transaction confirmation...');
+      // Wait for approval confirmation
+      let confirmed = false;
+      let attempts = 0;
+      const maxAttempts = 30;
+      
+      while (!confirmed && attempts < maxAttempts) {
+        try {
+          const receipt = await provider.request({
+            method: "eth_getTransactionReceipt",
+            params: [approvalTxHash],
+          });
+          
+          if (receipt && receipt.status === "0x1") {
+            confirmed = true;
+            console.log("✅ Approval confirmed");
+          } else if (receipt && receipt.status === "0x0") {
+            throw new Error("Approval transaction failed");
+          }
+        } catch (receiptError) {
+          console.log(`⏳ Waiting for approval... (${attempts + 1}/${maxAttempts})`);
+        }
+        
+        if (!confirmed) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          attempts++;
+        }
+      }
+      
+      if (!confirmed) {
+        throw new Error("Approval not confirmed within timeout");
+      }
+      
+      // Convert frequency to days for backend API
+      const frequencyMap = {
+        'daily': 1,
+        'weekly': 7, 
+        'monthly': 30
+      };
+      const intervalDays = frequencyMap[config.frequency] || 30;
+      
+      console.log('📡 Scheduling with backend API...');
+      
+      // Schedule with backend API
+      const response = await fetch(`${API_BASE_URL}/schedule-auto-deposit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user: userAddress,
+          token: usdcAddress,
+          amount: config.amount.toString(),
+          intervalDays: intervalDays,
+          startTime: new Date(Date.now() + (intervalDays * 24 * 60 * 60 * 1000)).toISOString()
+        }),
+      });
+      
+      const apiResult = await response.json();
+      
+      if (!apiResult.success) {
+        throw new Error(`Backend API error: ${apiResult.error}`);
+      }
+      
+      console.log('✅ Auto deposit scheduled:', apiResult.scheduleId);
       
       // Calculate next deposit time
-      const nextDeposit = new Date(Date.now() + (frequencySeconds * 1000));
+      const nextDeposit = new Date(apiResult.schedule.nextDeposit);
       
-      // Save to localStorage with on-chain reference
+      // Save configuration
       const depositConfig = {
         ...config,
         nextDeposit: nextDeposit.toISOString(),
-        userAddress: user.wallet.address,
+        userAddress: userAddress,
         createdAt: new Date().toISOString(),
-        contractAddress: AUTOMATED_DEPOSITS_ADDRESS,
-        txHash: txHash,
-        scheduleId: 0, // We'll need to get this from contract events
-        gelatoTaskId: null,
-        isOnChain: true, // Mark as on-chain
-        frequency: config.frequency,
-        amountWei: amountWei.toString(),
+        scheduleId: apiResult.scheduleId,
+        approvalTxHash: approvalTxHash,
+        isBackendScheduled: true,
+        intervalDays: intervalDays,
       };
       
       localStorage.setItem(`deposits-${user.id}`, JSON.stringify(depositConfig));
@@ -213,74 +237,72 @@ export function useAutomatedDeposits() {
         error: null,
       }));
       
-      console.log('✅ On-chain automated deposit schedule created!', {
-        txHash,
-        contract: contractAddress,
-        nextDeposit: nextDeposit.toISOString()
+      console.log('✅ Simplified auto deposit setup complete!', {
+        scheduleId: apiResult.scheduleId,
+        nextDeposit: nextDeposit.toISOString(),
+        approvalTx: approvalTxHash
       });
 
     } catch (error) {
-      console.error('❌ Failed to create on-chain schedule:', error);
-      
-      // If real transaction fails, fall back to localStorage simulation
-      console.log('🔄 Falling back to localStorage simulation...');
-      
-      const frequencyInSeconds = DEPOSIT_FREQUENCIES[config.frequency];
-      const frequencyInMs = Number(frequencyInSeconds) * 1000;
-      const nextDeposit = new Date(Date.now() + frequencyInMs);
-      
-      const depositConfig = {
-        ...config,
-        nextDeposit: nextDeposit.toISOString(),
-        userAddress: user.wallet.address,
-        createdAt: new Date().toISOString(),
-        contractAddress: AUTOMATED_DEPOSITS_ADDRESS,
-        scheduleId: 0,
-        gelatoTaskId: null,
-        isOnChain: false, // Mark as simulation
-        fallbackReason: error instanceof Error ? error.message : 'Unknown error',
-      };
-      
-      localStorage.setItem(`deposits-${user.id}`, JSON.stringify(depositConfig));
-      
+      console.error('❌ Failed to setup auto deposit:', error);
       setState(prev => ({
         ...prev,
-        isEnabled: true,
-        config,
-        nextDeposit,
-        error: null, // Don't show error to user - we fell back gracefully
+        error: error instanceof Error ? error.message : 'Setup failed',
       }));
-      
-      console.log('💾 Fallback configuration saved to localStorage');
     } finally {
       setIsTransactionPending(false);
     }
   };
 
   const disableAutomatedDeposits = async () => {
-    if (!user?.wallet?.address || !scheduleCount) return;
+    if (!user?.wallet?.address) return;
 
     try {
-      // Call updateSchedule to disable the latest schedule
-      await writeContract({
-        address: AUTOMATED_DEPOSITS_ADDRESS,
-        abi: [
-          {
-            name: 'updateSchedule',
-            type: 'function', 
-            inputs: [
-              { name: 'scheduleId', type: 'uint256' },
-              { name: 'isActive', type: 'bool' }
-            ],
-            outputs: [],
-            stateMutability: 'nonpayable'
-          }
-        ],
-        functionName: 'updateSchedule',
-        args: [BigInt(Number(scheduleCount) - 1), false], // Disable latest schedule
+      console.log('🛑 Disabling automated deposits...');
+      
+      // Get the stored config to find the schedule ID
+      const savedConfig = localStorage.getItem(`deposits-${user.id}`);
+      if (!savedConfig) {
+        throw new Error('No saved deposit configuration found');
+      }
+      
+      const config = JSON.parse(savedConfig);
+      const scheduleId = config.scheduleId;
+      
+      if (!scheduleId) {
+        throw new Error('No schedule ID found');
+      }
+      
+      // Call backend API to cancel the schedule
+      const response = await fetch(`${API_BASE_URL}/scheduled-deposits/${scheduleId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(`Failed to cancel schedule: ${result.error}`);
+      }
+      
+      console.log('✅ Schedule cancelled successfully');
+      
+      // Update local state
+      setState(prev => ({
+        ...prev,
+        isEnabled: false,
+        config: null,
+        nextDeposit: null,
+        error: null,
+      }));
+      
+      // Clear localStorage
+      localStorage.removeItem(`deposits-${user.id}`);
+      
     } catch (error) {
-      console.error('Failed to disable automated deposits:', error);
+      console.error('❌ Failed to disable automated deposits:', error);
       setState(prev => ({
         ...prev,
         error: error instanceof Error ? error.message : 'Failed to disable',
