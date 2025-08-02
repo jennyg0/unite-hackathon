@@ -244,9 +244,11 @@ contract AutomatedDeposits is ReentrancyGuard, Ownable, Pausable {
 
     /**
      * @dev Get all active schedules that are ready for execution
+     * Note: This is a simplified implementation for hackathon purposes
+     * Production would use more efficient indexing
      */
     function getExecutableSchedules(
-        uint256 offset,
+        uint256 /* offset */,
         uint256 limit
     )
         external
@@ -257,13 +259,32 @@ contract AutomatedDeposits is ReentrancyGuard, Ownable, Pausable {
             uint256 count
         )
     {
-        // This is a simplified version - in production, you'd want more efficient indexing
         users = new address[](limit);
         scheduleIds = new uint256[](limit);
         count = 0;
-
-        // Note: This is not gas efficient for large numbers of users
-        // In production, consider off-chain indexing
+        
+        // For hackathon demo: simplified approach
+        // In production, maintain a separate registry of users
+        
+        // This is a placeholder that returns empty arrays
+        // Real implementation would iterate through actual user schedules
+        // and check which ones are ready for execution (nextDeposit <= block.timestamp)
+        
+        // Example implementation structure:
+        // for (each user in registry) {
+        //     for (each schedule of user) {
+        //         if (schedule.isActive && schedule.nextDeposit <= block.timestamp) {
+        //             if (count < limit && actualIndex >= offset) {
+        //                 users[count] = user;
+        //                 scheduleIds[count] = scheduleId;
+        //                 count++;
+        //             }
+        //             actualIndex++;
+        //         }
+        //     }
+        // }
+        
+        return (users, scheduleIds, count);
     }
 
     /**

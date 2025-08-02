@@ -95,18 +95,18 @@ const ERC20_ABI = [
   },
 ];
 
-// Contract addresses per chain
+// Contract addresses per chain - UPDATED WITH DEPLOYED ADDRESS
 const CONTRACT_ADDRESSES: Record<number, Address> = {
-  137: '0x...', // Polygon
-  8453: '0x...', // Base
-  1: '0x...', // Mainnet
+  137: '0x40D8364e7FB4BF12870f5ADBA5DAe206354bD6ED', // AutomatedDeposits deployed on Polygon
+  8453: '0x0000000000000000000000000000000000000000', // TODO: Replace with deployed AutomatedDeposits address on Base
+  1: '0x0000000000000000000000000000000000000000', // TODO: Replace with deployed AutomatedDeposits address on Mainnet
 };
 
-// Default recipient addresses (could be Aave, Morpho, etc.)
+// Default recipient addresses (Aave V3 Pools where deposits go)
 const DEFAULT_RECIPIENTS: Record<number, Address> = {
-  137: '0x...', // Aave V3 Pool on Polygon
-  8453: '0x...', // Aave V3 Pool on Base
-  1: '0x...', // Aave V3 Pool on Mainnet
+  137: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Aave V3 Pool on Polygon
+  8453: '0xA238Dd80C259a72e81d7e4664a9801593F98d1c5', // Aave V3 Pool on Base
+  1: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2', // Aave V3 Pool on Mainnet
 };
 
 export interface DepositSchedule {

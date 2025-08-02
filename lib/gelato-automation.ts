@@ -1,9 +1,11 @@
 import { AutomateSDK, TriggerType, TriggerConfig } from "@gelatonetwork/automate-sdk";
 import { ethers } from "ethers";
 
-// Contract addresses (will be filled after deployment)
-const AUTOMATED_DEPOSITS_CONTRACT = "0x..."; // TODO: Deploy with Foundry
-const USDC_ADDRESS = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // Polygon USDC
+// Contract addresses - UPDATED WITH DEPLOYED ADDRESSES
+const AUTOMATED_DEPOSITS_CONTRACT = "0x40D8364e7FB4BF12870f5ADBA5DAe206354bD6ED"; // AutomatedDeposits on Polygon
+const GELATO_RESOLVER_CONTRACT = "0x0000000000000000000000000000000000000000"; // TODO: Update after GelatoResolver deployment
+const USDC_ADDRESS = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"; // Native USDC on Polygon
+const AAVE_POOL_ADDRESS = "0x794a61358D6845594F94dc1DB02A252b5b4814aD"; // Aave V3 Pool on Polygon
 
 interface CreateAutomationParams {
   userAddress: string;
@@ -53,7 +55,8 @@ export class GelatoAutomationService {
   }
 
   /**
-   * Create automated deposit task via Gelato
+   * Create automated deposit task via Gelato using Solidity resolver
+   * This uses the GelatoResolver contract instead of TypeScript functions
    */
   async createDepositAutomation(params: CreateAutomationParams): Promise<string> {
     const { userAddress, amount, frequency, scheduleId, signer } = params;
@@ -61,43 +64,51 @@ export class GelatoAutomationService {
     try {
       const automate = await this.ensureSDK();
 
-      // Convert frequency to cron expression
-      const cronExpression = this.getCronExpression(frequency);
+      if (GELATO_RESOLVER_CONTRACT === "0x0000000000000000000000000000000000000000") {
+        throw new Error("GelatoResolver contract not deployed yet. Please deploy it first.");
+      }
 
-      // Prepare contract call data
-      const contractInterface = new ethers.Interface([
-        "function executeDeposit(address user, uint256 scheduleId)"
-      ]);
-
-      const execData = contractInterface.encodeFunctionData("executeDeposit", [
-        userAddress,
-        scheduleId
-      ]);
-
-      // Create the automated task
+      // Create resolver-based task (more gas efficient than cron)
+      // This checks every 6 hours instead of every hour for gas optimization
       const result = await automate.createTask({
         name: `Automated Deposit - ${userAddress}`,
         execAddress: AUTOMATED_DEPOSITS_CONTRACT,
-        execData,
-        execSelector: "0x", // Required by SDK - empty selector for full execData
-        dedicatedMsgSender: true, // Required by SDK
+        execSelector: "0x", // Will be determined by resolver
+        dedicatedMsgSender: true,
         trigger: {
-          type: TriggerType.TIME,
-          cron: cronExpression,
-          interval: this.getIntervalFromFrequency(frequency), // Add required interval property
+          type: TriggerType.RESOLVER,
+          resolver: GELATO_RESOLVER_CONTRACT,
+          resolverData: this.encodeResolverData([userAddress], [scheduleId]),
+          interval: 21600, // Check every 6 hours (6 * 60 * 60 = 21600 seconds) for gas efficiency
         } as TriggerConfig,
       });
 
       const taskId = result.taskId || `task_${Date.now()}`;
-      console.log(`✅ Created Gelato task: ${taskId}`);
+      console.log(`✅ Created Gelato resolver task: ${taskId}`);
+      console.log(`⚡ Gas optimized: checks every 6 hours instead of hourly`);
       return taskId;
     } catch (error) {
       console.error('Failed to create Gelato automation:', error);
       // For hackathon/demo purposes, return a mock task ID
-      const mockTaskId = `mock_task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      console.log(`🎭 Mock Gelato task created: ${mockTaskId}`);
+      const mockTaskId = `mock_resolver_task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log(`🎭 Mock Gelato resolver task created: ${mockTaskId}`);
+      console.log(`⚡ Would check every 6 hours for optimal gas usage`);
       return mockTaskId;
     }
+  }
+
+  /**
+   * Encode resolver data for the GelatoResolver contract
+   */
+  private encodeResolverData(userAddresses: string[], scheduleIds: number[]): string {
+    const contractInterface = new ethers.Interface([
+      "function checker(address[] calldata userAddresses, uint256[] calldata scheduleIds) external view returns (bool canExec, bytes memory execPayload)"
+    ]);
+
+    return contractInterface.encodeFunctionData("checker", [
+      userAddresses,
+      scheduleIds
+    ]);
   }
 
   /**
@@ -182,12 +193,57 @@ export class GelatoAutomationService {
   }
 
   /**
-   * Estimate gas cost for automation
+   * Estimate gas cost for automation with frequency optimization
    */
-  async estimateGasCost(userAddress: string, scheduleId: number): Promise<string> {
-    // This would call the contract to estimate gas
-    // For now, return a reasonable estimate
-    return "0.50"; // $0.50 USD per execution
+  async estimateGasCost(userAddress: string, scheduleId: number): Promise<{
+    dailyCost: string;
+    monthlyCost: string;
+    optimizationNote: string;
+  }> {
+    // Gas cost breakdown for Polygon:
+    // - Resolver check: ~30,000 gas (~$0.01 at 30 gwei)
+    // - Deposit execution: ~150,000 gas (~$0.05 at 30 gwei)
+    // - 6-hour intervals = 4 checks/day = ~$0.04/day for checks
+    
+    return {
+      dailyCost: "0.09", // $0.04 checks + $0.05 execution (when triggered)
+      monthlyCost: "2.70", // ~$0.09 * 30 days
+      optimizationNote: "Optimized to check every 6 hours instead of hourly, reducing gas costs by 83%"
+    };
+  }
+
+  /**
+   * Get frequency recommendations for gas optimization
+   */
+  getOptimalFrequencies(): {
+    recommended: string;
+    alternatives: { frequency: string; cost: string; description: string }[];
+  } {
+    return {
+      recommended: "6 hours",
+      alternatives: [
+        {
+          frequency: "1 hour",
+          cost: "$0.24/day",
+          description: "Fastest response, highest cost"
+        },
+        {
+          frequency: "6 hours", 
+          cost: "$0.04/day",
+          description: "Recommended balance of speed and cost"
+        },
+        {
+          frequency: "12 hours",
+          cost: "$0.02/day", 
+          description: "Most cost-effective, slower response"
+        },
+        {
+          frequency: "24 hours",
+          cost: "$0.01/day",
+          description: "Ultra low cost, daily checks only"
+        }
+      ]
+    };
   }
 }
 

@@ -6,14 +6,13 @@ import "../contracts/AutomatedDeposits.sol";
 
 contract DeployAutomatedDepositsOnly is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
+        address deployer = msg.sender;
         
         console.log("Deploying AutomatedDeposits...");
         console.log("Deployer:", deployer);
         console.log("Chain ID:", block.chainid);
 
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast();
 
         // Deploy with deployer as fee recipient initially
         AutomatedDeposits automatedDeposits = new AutomatedDeposits(deployer);
