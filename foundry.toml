@@ -18,12 +18,6 @@ gnosis = "https://rpc.gnosischain.com"
 
 # Etherscan API keys for verification
 [etherscan]
-mainnet = { key = "${ETHERSCAN_API_KEY}", url = "https://api.etherscan.io/api" }
-polygon = { key = "dummy", url = "https://api.polygonscan.com/api" }
-polygonAmoy = { key = "dummy", url = "https://api-amoy.polygonscan.com/api" }
-base = { key = "${BASESCAN_API_KEY}", url = "https://api.basescan.org/api" }
-baseSepolia = { key = "${BASESCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }
-gnosis = { key = "${GNOSISSCAN_API_KEY}", url = "https://api.gnosisscan.io/api" }
 
 # Gas reporting
 [fmt]

@@ -10,7 +10,7 @@ import {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // Simplified auto deposit contract address
-const SIMPLE_AUTO_DEPOSIT_ADDRESS = '0x40D8364e7FB4BF12870f5ADBA5DAe206354bD6ED';
+const SIMPLE_AUTO_DEPOSIT_ADDRESS = '0x93CCA0c23c52E59a4aDA7694F1D7eaEf2cF89C13';
 
 interface DepositConfig {
   amount: number;

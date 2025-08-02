@@ -1,0 +1,21 @@
+{
+  "name": "auto-deposit-api",
+  "version": "1.0.0",
+  "description": "Backend API for automated deposits",
+  "main": "auto-deposit.js",
+  "scripts": {
+    "start": "node auto-deposit.js",
+    "dev": "nodemon auto-deposit.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "ethers": "^6.8.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "deposit-executor",
+  "version": "1.0.0",
+  "description": "Cron job for executing scheduled deposits",
+  "main": "deposit-executor.js",
+  "scripts": {
+    "start": "node deposit-executor.js",
+    "execute": "node deposit-executor.js"
+  },
+  "dependencies": {
+    "ethers": "^6.8.0",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

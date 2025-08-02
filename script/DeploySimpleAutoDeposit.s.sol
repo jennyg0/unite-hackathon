@@ -43,7 +43,12 @@ contract DeploySimpleAutoDeposit is Script {
         console.log("Deployment info saved to simple-auto-deposit-deployment.json");
         
         // Verification command
-        console.log("\nTo verify on Polygonscan, run:");
-        console.log("forge verify-contract", vm.toString(address(autoDeposit)), "contracts/SimpleAutoDeposit.sol:SimpleAutoDeposit", "--chain-id", vm.toString(block.chainid), "--constructor-args", abi.encode(aavePool));
+        console.log("To verify on Polygonscan, run:");
+        console.log("forge verify-contract");
+        console.log(vm.toString(address(autoDeposit)));
+        console.log("contracts/SimpleAutoDeposit.sol:SimpleAutoDeposit");
+        console.log("--chain-id 137");
+        console.log("--constructor-args");
+        console.log(vm.toString(abi.encode(aavePool)));
     }
 }

@@ -34,8 +34,9 @@ import { LoadingDots } from "@/components/ui/LoadingSkeletons";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import EducationCenter from "@/components/EducationCenter";
 import MilestoneNFTDisplay from "@/components/MilestoneNFTDisplay";
+import AutoDepositDashboard from "@/components/AutoDepositDashboard";
 
-type TabType = "portfolio" | "history" | "learn" | "achievements";
+type TabType = "portfolio" | "history" | "learn" | "achievements" | "autoDeposit";
 
 export default function DashboardPage() {
   const { authenticated, ready } = usePrivy();
@@ -189,6 +190,7 @@ export default function DashboardPage() {
           {activeTab === "learn" && <LearnTab />}
           {activeTab === "achievements" && <AchievementsTab />}
           {activeTab === "history" && <HistoryTab />}
+          {activeTab === "autoDeposit" && <AutoDepositTab />}
         </motion.div>
 
         {/* Deposit Modal */}
@@ -475,6 +477,22 @@ function HistoryTab() {
       </div>
 
       <TransactionHistory limit={50} showSummary={true} />
+    </motion.div>
+  );
+}
+
+// AUTO DEPOSIT TAB - Manage automated deposits
+function AutoDepositTab() {
+  return (
+    <motion.div
+      className="max-w-6xl mx-auto"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <ErrorBoundary>
+        <AutoDepositDashboard />
+      </ErrorBoundary>
     </motion.div>
   );
 }
