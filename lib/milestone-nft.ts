@@ -4,23 +4,24 @@ import {
   http,
   type Address 
 } from 'viem';
-import { polygon, base, mainnet } from 'viem/chains';
-import { get1inchRPC } from './1inch-rpc';
+import { polygon, base, mainnet, gnosis } from 'viem/chains';
+import { get1inchRPCUrl } from './1inch-rpc';
 
 // Contract ABIs (simplified)
 const MILESTONE_NFT_ABI = [
   {
-    name: 'mintMilestone',
-    type: 'function',
-    stateMutability: 'nonpayable',
     inputs: [
       { name: 'to', type: 'address' },
       { name: 'milestoneType', type: 'uint8' },
       { name: 'value', type: 'uint256' },
       { name: 'title', type: 'string' },
       { name: 'description', type: 'string' },
+      { name: 'metadataURI', type: 'string' },
     ],
-    outputs: [{ name: 'tokenId', type: 'uint256' }],
+    name: 'mintMilestone',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function'
   },
   {
     name: 'tokenURI',
@@ -38,6 +39,16 @@ const MILESTONE_NFT_ABI = [
   },
   {
     name: 'hasAchievedMilestone',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'user', type: 'address' },
+      { name: 'milestoneType', type: 'uint8' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+  {
+    name: 'hasEarnedMilestone',
     type: 'function',
     stateMutability: 'view',
     inputs: [
@@ -109,8 +120,11 @@ const MILESTONE_TRACKER_ABI = [
 
 // Contract addresses per chain - Only need ONE NFT collection
 const CONTRACT_ADDRESSES: Record<number, { nft: Address }> = {
+  100: {
+    nft: '0x0a3C9A29C6C8462F4FBe17B5690542bb0C8C4Ce7' as Address, // Deployed on Gnosis
+  },
   137: {
-    nft: '0x0000000000000000000000000000000000000000' as Address, // Replace with your deployed NFT contract
+    nft: '0xcEa193BF20a0CdA82b7C51443ec9547345156664' as Address, // Deployed on Polygon
   },
   8453: {
     nft: '0x0000000000000000000000000000000000000000' as Address,
@@ -153,7 +167,7 @@ export interface UserMilestoneData {
 }
 
 export class MilestoneSDK {
-  private publicClient: any;
+  public publicClient: any;
   private walletClient: any;
   private chainId: number;
   private nftAddress: Address;
@@ -167,50 +181,105 @@ export class MilestoneSDK {
     
     this.nftAddress = addresses.nft;
     
-    const chain = chainId === 137 ? polygon : chainId === 8453 ? base : mainnet;
+    const chain = chainId === 100 ? gnosis : chainId === 137 ? polygon : chainId === 8453 ? base : mainnet;
+    
+    // Fallback to standard Gnosis RPC due to 1inch proxy issues
+    const rpcUrl = chainId === 100 ? 'https://rpc.gnosischain.com' : `/api/1inch-rpc/${chainId}`;
     
     this.publicClient = createPublicClient({
       chain,
-      transport: http(),
+      transport: http(rpcUrl),
     });
+    
+    console.log(`🌐 Public client initialized with RPC: ${rpcUrl} for chain ${chainId}`);
   }
 
   setWalletClient(walletClient: any) {
     this.walletClient = walletClient;
   }
 
+  get contractAddress(): Address {
+    return this.nftAddress;
+  }
+
   // Get user's milestone data using 1inch NFT API
   async getUserData(user: Address): Promise<UserMilestoneData> {
     try {
+      // Check cache first to avoid rate limiting
+      const cacheKey = `nft-data-${user}-${this.chainId}`;
+      const cached = localStorage.getItem(cacheKey);
+      const cacheTime = localStorage.getItem(`${cacheKey}-time`);
+      
+      // Use cache if less than 2 minutes old
+      if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < 120000) {
+        console.log('📦 Using cached NFT data for:', user);
+        const cachedData = JSON.parse(cached);
+        console.log('📦 Cached NFT data:', cachedData);
+        return cachedData;
+      }
+      
+      console.log('🚀 Making fresh NFT API request...');
+
       // Fetch user's NFTs from our collection using 1inch API
-      const nftResponse = await fetch(`/api/1inch/nft/v2/byaddress/${user}?contractAddress=${this.nftAddress}&chainId=${this.chainId}`);
+      // Use POST to properly send array parameters like axios does
+      const nftResponse = await fetch(`/api/1inch/nft/v2/byaddress`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: user,
+          chainIds: [this.chainId],
+          // Don't send contractAddress - 1inch API doesn't accept it for /byaddress endpoint
+          // We filter by contract address in the response instead
+        }),
+      });
+      
+      console.log('🔍 Fetching NFTs for:', user, 'on chain:', this.chainId, 'contract:', this.nftAddress);
       
       let milestones: Milestone[] = [];
       
+      if (nftResponse.status === 429) {
+        console.warn('⚠️ Rate limited by 1inch API, using fallback...');
+        // Return cached data if available, otherwise empty state
+        if (cached) {
+          return JSON.parse(cached);
+        }
+        throw new Error('Rate limited and no cached data available');
+      }
+      
+      console.log('📡 NFT API response status:', nftResponse.status);
+      
       if (nftResponse.ok) {
         const nftData = await nftResponse.json();
+        console.log('📦 NFT API response:', nftData);
+        console.log('📊 Total NFTs found:', nftData.assets?.length || 0);
         
-        // Parse milestone NFTs from the response
-        milestones = (nftData.result || [])
-          .filter((token: any) => token.contractAddress?.toLowerCase() === this.nftAddress.toLowerCase())
+        // Parse milestone NFTs from the response (1inch API returns "assets", not "result")
+        milestones = (nftData.assets || [])
+          .filter((token: any) => token.asset_contract?.address?.toLowerCase() === this.nftAddress.toLowerCase())
           .map((token: any) => {
             const info = this.getMilestoneInfo(this.getMilestoneTypeFromName(token.name || ''));
             return {
-              id: Number(token.tokenId),
+              id: Number(token.token_id),
               type: this.getMilestoneTypeFromName(token.name || ''),
-              value: token.metadata?.attributes?.find((a: any) => a.trait_type === 'Value')?.value || 0,
+              value: 1, // Default value since metadata might not be available
               title: token.name || 'Milestone NFT',
-              description: token.metadata?.description || 'Achievement unlocked!',
-              timestamp: new Date(Number(token.metadata?.attributes?.find((a: any) => a.trait_type === 'Achievement Date')?.value || Date.now() / 1000) * 1000),
-              imageUrl: token.metadata?.image,
+              description: 'Achievement unlocked!',
+              timestamp: new Date(), // Use current date as fallback
+              imageUrl: token.image_url,
               emoji: info.emoji,
             };
           });
+      } else {
+        console.warn('⚠️ NFT API request failed:', nftResponse.status, nftResponse.statusText);
+        const errorText = await nftResponse.text();
+        console.error('❌ NFT API error response:', errorText);
       }
 
       // For now, return mock progress data - this could come from your backend/database
       // or be calculated based on the earned NFTs
-      return {
+      const userData = {
         totalDeposited: 0, // Calculate from deposit NFTs or backend
         firstDepositTime: null,
         lastDepositTime: null,
@@ -221,20 +290,42 @@ export class MilestoneSDK {
         financialFreedomTarget: 10000,
         milestones,
       };
+
+      // Cache the successful response
+      localStorage.setItem(cacheKey, JSON.stringify(userData));
+      localStorage.setItem(`${cacheKey}-time`, Date.now().toString());
+      
+      return userData;
     } catch (error) {
       console.error('Error fetching user milestone data:', error);
       throw error;
     }
   }
 
-  // Check if user has specific milestone by querying their NFTs
+  // Check if user has specific milestone by querying the contract directly
   async hasAchievedMilestone(user: Address, milestoneType: MilestoneType): Promise<boolean> {
     try {
-      const userData = await this.getUserData(user);
-      return userData.milestones.some(m => m.type === milestoneType);
-    } catch (error) {
-      console.error('Error checking milestone:', error);
-      return false;
+      // First try direct contract call for most accurate data
+      const hasAchieved = await this.publicClient.readContract({
+        address: this.nftAddress,
+        abi: MILESTONE_NFT_ABI,
+        functionName: 'hasEarnedMilestone',
+        args: [user, milestoneType],
+      });
+      
+      console.log(`📋 Contract check - User ${user} milestone ${milestoneType}:`, hasAchieved);
+      return hasAchieved as boolean;
+    } catch (contractError) {
+      console.warn('Contract check failed, falling back to NFT API:', contractError);
+      
+      // Fallback to 1inch API method
+      try {
+        const userData = await this.getUserData(user);
+        return userData.milestones.some(m => m.type === milestoneType);
+      } catch (apiError) {
+        console.error('Both contract and API checks failed:', apiError);
+        return false;
+      }
     }
   }
 
@@ -242,16 +333,92 @@ export class MilestoneSDK {
   async mintMilestone(to: Address, milestoneType: MilestoneType, metadata: any): Promise<string> {
     if (!this.walletClient) throw new Error('Wallet client not set');
 
-    const { request } = await this.publicClient.simulateContract({
-      address: this.nftAddress,
-      abi: MILESTONE_NFT_ABI,
-      functionName: 'mintMilestone',
-      args: [to, milestoneType, BigInt(metadata.value || 0), metadata.title, metadata.description],
-      account: this.walletClient.account,
-    });
+    // Create simple metadata URI (for hackathon, we'll use a simple JSON string)
+    const metadataJson = {
+      name: metadata.title,
+      description: metadata.description,
+      image: `https://api.dicebear.com/7.x/shapes/svg?seed=${milestoneType}`,
+      attributes: [
+        { trait_type: "Milestone Type", value: MilestoneType[milestoneType] },
+        { trait_type: "Value", value: metadata.value },
+        { trait_type: "Achievement Date", value: Math.floor(Date.now() / 1000) }
+      ]
+    };
+    
+    console.log('📋 Metadata JSON:', metadataJson);
+    
+    const metadataURI = `data:application/json;base64,${Buffer.from(JSON.stringify(metadataJson)).toString('base64')}`;
+    
+    console.log('📋 Metadata URI length:', metadataURI.length);
+    console.log('📋 Metadata URI preview:', metadataURI.substring(0, 100) + '...');
 
-    const hash = await this.walletClient.writeContract(request);
-    return hash;
+    console.log('📤 Final contract call arguments:');
+    console.log('  address:', this.nftAddress);
+    console.log('  to:', to);
+    console.log('  milestoneType:', milestoneType);
+    console.log('  value:', BigInt(metadata.value || 0));
+    console.log('  title:', metadata.title);
+    console.log('  description:', metadata.description);
+    console.log('  metadataURI length:', metadataURI.length);
+
+    try {
+      console.log('🎯 Minting NFT...');
+      
+      const { request } = await this.publicClient.simulateContract({
+        address: this.nftAddress,
+        abi: MILESTONE_NFT_ABI,
+        functionName: 'mintMilestone',
+        args: [to, milestoneType, BigInt(metadata.value || 0), metadata.title, metadata.description, metadataURI],
+        account: this.walletClient.account,
+      });
+
+      console.log('✅ Simulation successful, executing transaction...');
+      const hash = await this.walletClient.writeContract(request);
+      return hash;
+    } catch (simulateError: any) {
+      console.error('❌ Contract simulation failed:', simulateError);
+      
+      // Try to decode the specific error
+      if (simulateError?.data === '0x118cdaa7') {
+        console.error('🔍 Error 0x118cdaa7 detected - this is likely a custom revert');
+        
+        // Check if this matches any known Solidity error signatures
+        console.error('💡 Possible causes:');
+        console.error('  - Contract is paused');
+        console.error('  - Invalid milestone type (should be 0-4)');
+        console.error('  - Milestone already earned by this user');
+        console.error('  - Contract access control issue');
+        console.error('  - Gas estimation failure');
+        
+        // Let's try to call the hasEarnedMilestone function directly to debug
+        try {
+          const alreadyEarned = await this.publicClient.readContract({
+            address: this.nftAddress,
+            abi: MILESTONE_NFT_ABI,
+            functionName: 'hasEarnedMilestone',
+            args: [to, milestoneType],
+          });
+          console.error('🔍 hasEarnedMilestone check:', alreadyEarned);
+        } catch (readError) {
+          console.error('🔍 Failed to read hasEarnedMilestone:', readError);
+        }
+        
+        throw new Error(`Contract revert with signature 0x118cdaa7. Check console for detailed analysis.`);
+      }
+      
+      // For other errors, provide more context
+      if (simulateError?.message) {
+        console.error('📝 Error message:', simulateError.message);
+      }
+      if (simulateError?.cause) {
+        console.error('📝 Error cause:', simulateError.cause);
+      }
+      if (simulateError?.data) {
+        console.error('📝 Error data:', simulateError.data);
+      }
+      
+      throw simulateError;
+    }
   }
 
   // Helper to parse token URI

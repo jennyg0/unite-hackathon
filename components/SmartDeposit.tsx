@@ -16,6 +16,8 @@ import { useFusionSwap } from "@/hooks/useFusionSwap";
 import { useAutomatedDeposits } from "@/hooks/useAutomatedDeposits";
 import { useMilestoneTracking } from "@/hooks/useMilestoneTracking";
 import { MilestoneType } from "@/lib/milestone-nft";
+import { useToastContext } from "@/components/ToastProvider";
+import { useRouter } from "next/navigation";
 import { transactionHistory } from "@/lib/transaction-history";
 import { AaveService } from "@/lib/aave-service";
 import { DEFAULT_CHAIN_ID } from "@/lib/constants";
@@ -79,11 +81,34 @@ export default function SmartDeposit({
   const { setupAutomatedDeposits, isLoading: depositsLoading } =
     useAutomatedDeposits();
   
+  // State to track earned milestone for success message
+  const [earnedMilestone, setEarnedMilestone] = useState<string | null>(null);
+
+  // Toast and navigation
+  const toast = useToastContext();
+  const router = useRouter();
+
   // Milestone tracking with NFT minting callback
   const { trackDeposit, trackAutomatedSavings } = useMilestoneTracking({
     onMilestoneEarned: (milestone) => {
       console.log('🎉 Milestone earned!', milestone);
-      // You could show a notification here
+      
+      // Store the milestone name for the success message
+      const milestoneNames = {
+        [MilestoneType.FIRST_DEPOSIT]: "First Steps 💰",
+        [MilestoneType.SAVINGS_STREAK]: "Auto Saver 🔥",
+        [MilestoneType.EDUCATION_COMPLETE]: "DeFi Scholar 🎓",
+        [MilestoneType.AMOUNT_SAVED]: "Savings Champion 💎",
+        [MilestoneType.EARLY_ADOPTER]: "BYOB Pioneer 🚀"
+      };
+      
+      const milestoneName = milestoneNames[milestone];
+      setEarnedMilestone(milestoneName);
+      
+      // Show NFT toast notification
+      toast.showNFTToast(milestoneName, () => {
+        router.push('/dashboard?tab=achievements');
+      });
     }
   });
 
@@ -878,6 +903,12 @@ export default function SmartDeposit({
           });
           console.log("✅ Automated deposits set up successfully");
           
+          // Show success toast
+          toast.showSuccessToast(
+            "🔄 Autodeposit Activated!",
+            `You'll now save $${depositAmount} ${frequency === 'daily' ? 'daily' : frequency === 'weekly' ? 'weekly' : 'monthly'}`
+          );
+          
           // Track savings streak milestone
           await trackAutomatedSavings();
         } catch (automationError) {
@@ -891,15 +922,17 @@ export default function SmartDeposit({
       }
 
       setStatus("success");
-      setStatusMessage(
-        depositType === "one-time"
-          ? `Successfully deposited $${amount}! Your money is now earning ${currentAPY.toFixed(
-              1
-            )}% APY via Aave.`
-          : `Automated savings set up! You'll save $${amount} ${frequency} earning ${currentAPY.toFixed(
-              1
-            )}% APY.`
-      );
+      
+      // Create success message with milestone notification if earned
+      let successMessage = depositType === "one-time"
+        ? `Successfully deposited $${amount}! Your money is now earning ${currentAPY.toFixed(1)}% APY via Aave.`
+        : `Automated savings set up! You'll save $${amount} ${frequency} earning ${currentAPY.toFixed(1)}% APY.`;
+      
+      if (earnedMilestone) {
+        successMessage += `\n\n🎉✨ MILESTONE UNLOCKED! ✨🎉\nYou earned the ${earnedMilestone} NFT!\nGo to Achievements to claim your NFT!`;
+      }
+      
+      setStatusMessage(successMessage);
 
       // Trigger celebration effects
       setShowCelebration(true);
@@ -938,12 +971,14 @@ export default function SmartDeposit({
         setAmount("100");
         setIsProcessing(false);
         setShowCelebration(false);
+        setEarnedMilestone(null); // Clear milestone after success
       }, 4000);
     } catch (error) {
       console.error("❌ Deposit failed:", error);
       setStatus("idle");
       setStatusMessage("");
       setIsProcessing(false);
+      setEarnedMilestone(null); // Clear milestone on error
       alert(
         `Deposit failed: ${
           error instanceof Error ? error.message : "Unknown error"
@@ -1042,7 +1077,7 @@ export default function SmartDeposit({
             : "Automation Set Up!"}
         </motion.h3>
 
-        <p className="text-gray-600 mb-4">{statusMessage}</p>
+        <div className="text-gray-600 mb-4 whitespace-pre-line">{statusMessage}</div>
 
         <motion.div
           className="bg-green-50 rounded-lg p-4"

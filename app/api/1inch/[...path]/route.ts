@@ -3,11 +3,25 @@ import { NextRequest, NextResponse } from 'next/server';
 const ONEINCH_API_BASE = 'https://api.1inch.dev';
 const API_KEY = process.env.ONEINCH_API_KEY;
 
+// Simple in-memory rate limiting
+const lastRequestTime = new Map<string, number>();
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
+    // Rate limiting: wait at least 1 second between requests per IP
+    const clientIP = request.ip || 'unknown';
+    const now = Date.now();
+    const lastRequest = lastRequestTime.get(clientIP) || 0;
+    
+    if (now - lastRequest < 1000) {
+      const waitTime = 1000 - (now - lastRequest);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    lastRequestTime.set(clientIP, Date.now());
     // Check if API key is configured
     if (!API_KEY) {
       console.error('1inch API key not configured');
@@ -29,9 +43,15 @@ export async function GET(
     // Build the full URL
     const url = new URL(`${ONEINCH_API_BASE}/${path}`);
     
-    // Copy all search params
+    // Copy all search params, handle special cases for 1inch API
     searchParams.forEach((value, key) => {
-      url.searchParams.append(key, value);
+      if (key === 'chainIds') {
+        // 1inch API expects chainIds as repeated params: chainIds=137&chainIds=138
+        // This matches axios paramsSerializer: { indexes: null }
+        url.searchParams.append('chainIds', value);
+      } else {
+        url.searchParams.append(key, value);
+      }
     });
 
     console.log('Making request to:', url.toString());
@@ -96,7 +116,56 @@ export async function POST(
     const body = await request.json();
     
     console.log('1inch API Proxy POST:', { path, body });
+
+    // Special handling for NFT byaddress endpoint - convert POST to GET with proper params
+    if (path === 'nft/v2/byaddress') {
+      const url = new URL(`${ONEINCH_API_BASE}/${path}`);
+      
+      // Add parameters in exact axios format: chainIds=137&address=0x...
+      if (body.address) url.searchParams.append('address', body.address);
+      if (body.contractAddress) url.searchParams.append('contractAddress', body.contractAddress);
+      if (body.chainIds && Array.isArray(body.chainIds)) {
+        // For single chainId, just add as chainIds=137 (not chainIds[]=137)
+        // This matches axios paramsSerializer: { indexes: null }
+        body.chainIds.forEach((chainId: number) => {
+          url.searchParams.append('chainIds', chainId.toString());
+        });
+      }
+      
+      console.log('Making NFT GET request to:', url.toString());
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      console.log('1inch API NFT response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('1inch API NFT error:', errorText);
+        return NextResponse.json(
+          { error: `1inch API error: ${response.status}` },
+          { status: response.status }
+        );
+      }
+
+      const data = await response.json();
+      console.log('1inch API NFT response data keys:', Object.keys(data));
+
+      return NextResponse.json(data, {
+        status: response.status,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=59',
+        },
+      });
+    }
     
+    // Default POST handling for other endpoints
     const url = new URL(`${ONEINCH_API_BASE}/${path}`);
     
     console.log('Making POST request to:', url.toString());
