@@ -16,7 +16,7 @@ interface MilestoneTrackingOptions {
 
 // Helper function to create milestone metadata
 const createMilestoneMetadata = (type: MilestoneType, userAddress: string) => {
-  const milestoneInfo = {
+  const milestoneInfo: Record<MilestoneType, { title: string; description: string; value: number }> = {
     [MilestoneType.FIRST_DEPOSIT]: {
       title: "First Steps 💰",
       description: "Made your first deposit and started your DeFi journey!",
@@ -37,9 +37,29 @@ const createMilestoneMetadata = (type: MilestoneType, userAddress: string) => {
       description: "Reached $1000 in total savings - you're building wealth!",
       value: 1000
     },
+    [MilestoneType.FINANCIAL_FREEDOM]: {
+      title: "Financial Freedom 🎯",
+      description: "Achieved financial freedom target - congratulations!",
+      value: 10000
+    },
+    [MilestoneType.REFERRAL_CHAMPION]: {
+      title: "Referral Champion 🤝",
+      description: "Referred friends to join the platform!",
+      value: 5
+    },
     [MilestoneType.EARLY_ADOPTER]: {
       title: "BYOB Pioneer 🚀",
       description: "Early adopter of the BYOB platform - thanks for being an early believer!",
+      value: 1
+    },
+    [MilestoneType.WHALE_SAVER]: {
+      title: "Whale Saver 🐋",
+      description: "Saved a massive amount - you're a whale!",
+      value: 100000
+    },
+    [MilestoneType.ENS_IDENTITY]: {
+      title: "ENS Identity 🌐",
+      description: "Set up your ENS identity for Web3!",
       value: 1
     }
   };

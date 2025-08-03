@@ -12,7 +12,9 @@ export async function GET(
 ) {
   try {
     // Rate limiting: wait at least 1 second between requests per IP
-    const clientIP = request.ip || 'unknown';
+    const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0] || 
+                     request.headers.get('x-real-ip') || 
+                     'unknown';
     const now = Date.now();
     const lastRequest = lastRequestTime.get(clientIP) || 0;
     

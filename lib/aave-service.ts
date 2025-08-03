@@ -544,7 +544,7 @@ export class AaveService {
       // First try 1inch API (might work for some aTokens)
       try {
         const oneInchAPI = getOneInchAPI();
-        const balances = await oneInchAPI.getWalletBalances(userAddress, this.chainId);
+        const balances = await oneInchAPI.getWalletBalances(userAddress);
         
         const aTokenBalance = balances.find(balance => 
           balance.token.address.toLowerCase() === aTokenAddress.toLowerCase()

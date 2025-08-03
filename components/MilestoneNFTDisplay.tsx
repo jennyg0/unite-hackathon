@@ -346,12 +346,16 @@ export function MilestoneNFTDisplay({
         console.log("🎉 NFT claimed successfully!", txHash);
 
         // Show success message
-        const milestoneNames = {
+        const milestoneNames: Record<MilestoneType, string> = {
           [MilestoneType.FIRST_DEPOSIT]: "First Steps 💰",
           [MilestoneType.SAVINGS_STREAK]: "Auto Saver 🔥",
           [MilestoneType.EDUCATION_COMPLETE]: "DeFi Scholar 🎓",
           [MilestoneType.AMOUNT_SAVED]: "Savings Champion 💎",
+          [MilestoneType.FINANCIAL_FREEDOM]: "Financial Freedom 🎯",
+          [MilestoneType.REFERRAL_CHAMPION]: "Referral Champion 🤝",
           [MilestoneType.EARLY_ADOPTER]: "BYOB Pioneer 🚀",
+          [MilestoneType.WHALE_SAVER]: "Whale Saver 🐋",
+          [MilestoneType.ENS_IDENTITY]: "ENS Identity 🌐",
         };
 
         setSuccessModal({
@@ -440,7 +444,7 @@ export function MilestoneNFTDisplay({
       const isEarned = earnedTypes.has(template.type) || progress >= 1;
 
       const milestone: Milestone = earnedMilestone || {
-        id: `template-${template.type}`, // Use unique ID for templates to avoid conflicts
+        id: 1000 + template.type, // Use high numbers for templates to avoid conflicts with real NFT IDs
         type: template.type,
         value: template.requiredValue,
         title: template.title,

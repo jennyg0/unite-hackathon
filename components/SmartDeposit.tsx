@@ -94,12 +94,16 @@ export default function SmartDeposit({
       console.log('🎉 Milestone earned!', milestone);
       
       // Store the milestone name for the success message
-      const milestoneNames = {
+      const milestoneNames: Record<MilestoneType, string> = {
         [MilestoneType.FIRST_DEPOSIT]: "First Steps 💰",
         [MilestoneType.SAVINGS_STREAK]: "Auto Saver 🔥",
         [MilestoneType.EDUCATION_COMPLETE]: "DeFi Scholar 🎓",
         [MilestoneType.AMOUNT_SAVED]: "Savings Champion 💎",
-        [MilestoneType.EARLY_ADOPTER]: "BYOB Pioneer 🚀"
+        [MilestoneType.FINANCIAL_FREEDOM]: "Financial Freedom 🎯",
+        [MilestoneType.REFERRAL_CHAMPION]: "Referral Champion 🤝",
+        [MilestoneType.EARLY_ADOPTER]: "BYOB Pioneer 🚀",
+        [MilestoneType.WHALE_SAVER]: "Whale Saver 🐋",
+        [MilestoneType.ENS_IDENTITY]: "ENS Identity 🌐",
       };
       
       const milestoneName = milestoneNames[milestone];

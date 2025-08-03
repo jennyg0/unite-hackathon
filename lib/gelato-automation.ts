@@ -76,7 +76,7 @@ export class GelatoAutomationService {
         execSelector: "0x", // Will be determined by resolver
         dedicatedMsgSender: true,
         trigger: {
-          type: TriggerType.RESOLVER,
+          type: 'RESOLVER' as any, // TODO: Fix TriggerType enum after Gelato SDK update
           resolver: GELATO_RESOLVER_CONTRACT,
           resolverData: this.encodeResolverData([userAddress], [scheduleId]),
           interval: 21600, // Check every 6 hours (6 * 60 * 60 = 21600 seconds) for gas efficiency

@@ -181,9 +181,10 @@ export function useAutomatedDeposits() {
       // Convert frequency to days for backend API
       const frequencyMap = {
         'daily': 1,
-        'weekly': 7, 
+        'weekly': 7,
+        'bi-weekly': 14,
         'monthly': 30
-      };
+      } as const;
       const intervalDays = frequencyMap[config.frequency] || 30;
       
       console.log('📡 Scheduling with backend API...');
