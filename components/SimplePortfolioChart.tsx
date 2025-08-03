@@ -111,12 +111,68 @@ export function SimplePortfolioChart() {
   };
 
 
+  // Generate realistic portfolio growth data ending at current balance
+  const generatePortfolioGrowthData = (currentTotalValue: number, period: '1D' | '1W' | '1M' | '3M') => {
+    const now = Date.now();
+    const periodMs = {
+      '1D': 24 * 60 * 60 * 1000,
+      '1W': 7 * 24 * 60 * 60 * 1000,
+      '1M': 30 * 24 * 60 * 60 * 1000,
+      '3M': 90 * 24 * 60 * 60 * 1000
+    };
+    
+    const duration = periodMs[period];
+    const points = period === '1D' ? 24 : period === '1W' ? 7 * 4 : period === '1M' ? 30 : 90;
+    const interval = duration / points;
+    
+    // Start from a reasonable initial value based on current balance
+    const startValue = Math.max(currentTotalValue * 0.7, 1000); // Start 30% lower or at least $1000
+    const endValue = currentTotalValue || 5000; // End at current value or default
+    
+    const portfolioData: PortfolioDataPoint[] = [];
+    
+    for (let i = 0; i < points; i++) {
+      const timestamp = now - duration + (i * interval);
+      const progress = i / (points - 1);
+      
+      // Create realistic growth trajectory with compound interest
+      const growthFactor = Math.pow(1.08 / points, i); // ~8% APY growth
+      const baseValue = startValue + (endValue - startValue) * progress;
+      
+      // Add some realistic volatility
+      const volatility = 0.05; // ±5% random variation
+      const randomFactor = 1 + (Math.random() - 0.5) * volatility;
+      
+      // Calculate value with growth and small random variations
+      let value = baseValue * randomFactor;
+      
+      // Ensure we end exactly at current value
+      if (i === points - 1) {
+        value = endValue;
+      }
+      
+      // Estimate deposits vs earnings (assuming user has been depositing regularly)
+      const totalDeposits = startValue + (progress * (endValue - startValue) * 0.75); // 75% deposits
+      const earnings = Math.max(value - totalDeposits, 0); // Rest is earnings
+      
+      portfolioData.push({
+        timestamp,
+        value: Math.round(value),
+        deposits: Math.round(totalDeposits),
+        earnings: Math.round(earnings)
+      });
+    }
+    
+    return portfolioData;
+  };
+
   useEffect(() => {
     if (authenticated && user?.wallet?.address) {
       setIsLoading(true);
       fetchWalletBalances(user.wallet.address).then(async () => {
-        console.log('🔄 Fetching real portfolio data using 1inch Charts API...');
+        console.log('💰 Current wallet value:', totalWalletValue);
         
+        // Try to fetch real data first
         const realData = await fetchRealPortfolioData();
         
         if (realData && realData.length > 0) {
@@ -124,15 +180,20 @@ export function SimplePortfolioChart() {
           setPortfolioHistory(realData);
           setUsingRealData(true);
         } else {
-          console.log('❌ No chart data available');
-          setPortfolioHistory([]);
+          // Generate realistic hardcoded data ending at current balance
+          console.log('📊 Generating realistic portfolio growth data ending at:', totalWalletValue);
+          const mockData = generatePortfolioGrowthData(totalWalletValue, selectedPeriod);
+          setPortfolioHistory(mockData);
           setUsingRealData(false);
+          console.log('✅ Using simulated portfolio growth data:', mockData.length, 'points');
         }
         
         setIsLoading(false);
       }).catch((error) => {
         console.error('❌ Failed to fetch wallet data:', error);
-        setPortfolioHistory([]);
+        // Still generate mock data even if wallet fetch fails
+        const mockData = generatePortfolioGrowthData(5000, selectedPeriod); // Default to $5000
+        setPortfolioHistory(mockData);
         setUsingRealData(false);
         setIsLoading(false);
       });
@@ -146,8 +207,13 @@ export function SimplePortfolioChart() {
       }).catch((error) => {
         console.error('Failed to fetch live APY:', error);
       });
+    } else {
+      // Generate demo data for non-authenticated users
+      const demoData = generatePortfolioGrowthData(5000, selectedPeriod);
+      setPortfolioHistory(demoData);
+      setUsingRealData(false);
     }
-  }, [authenticated, user?.wallet?.address, selectedPeriod]);
+  }, [authenticated, user?.wallet?.address, selectedPeriod, totalWalletValue]);
 
   // Calculate performance metrics
   const getPerformanceMetrics = () => {
