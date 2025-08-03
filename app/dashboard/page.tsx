@@ -36,13 +36,13 @@ import EducationCenter from "@/components/EducationCenter";
 import MilestoneNFTDisplay from "@/components/MilestoneNFTDisplay";
 import AutoDepositDashboard from "@/components/AutoDepositDashboard";
 
-type TabType = "portfolio" | "history" | "learn" | "achievements";
+type TabType = "goals" | "portfolio" | "history" | "learn" | "achievements";
 
 export default function DashboardPage() {
   const { authenticated, ready } = usePrivy();
   const { state: onboardingState } = useOnboarding();
   const { getDisplayName, hasENS } = useENS();
-  const [activeTab, setActiveTab] = useState<TabType>("portfolio");
+  const [activeTab, setActiveTab] = useState<TabType>("goals");
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [depositModalMode, setDepositModalMode] = useState<
     "general" | "recurring"
@@ -171,8 +171,8 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeTab === "portfolio" && (
-            <MainPortfolioView
+          {activeTab === "goals" && (
+            <GoalsTab
               onShowDeposit={() => {
                 setDepositModalMode("general");
                 setShowDepositModal(true);
@@ -181,6 +181,10 @@ export default function DashboardPage() {
                 setDepositModalMode("recurring");
                 setShowDepositModal(true);
               }}
+            />
+          )}
+          {activeTab === "portfolio" && (
+            <PortfolioTab
               showHistoryExpanded={showHistoryExpanded}
               onToggleHistory={() =>
                 setShowHistoryExpanded(!showHistoryExpanded)
@@ -251,17 +255,13 @@ export default function DashboardPage() {
   );
 }
 
-// MAIN PORTFOLIO VIEW - Single focused view with goals, balance, and actions
-function MainPortfolioView({
+// GOALS TAB - Financial goals and automation settings
+function GoalsTab({
   onShowDeposit,
   onShowAutomateDeposit,
-  showHistoryExpanded,
-  onToggleHistory,
 }: {
   onShowDeposit: () => void;
   onShowAutomateDeposit: () => void;
-  showHistoryExpanded: boolean;
-  onToggleHistory: () => void;
 }) {
   const { getDisplayName, hasENS } = useENS();
   const [portfolioTotal, setPortfolioTotal] = useState<number>(0);
@@ -292,7 +292,7 @@ function MainPortfolioView({
         </motion.div>
       )}
 
-      {/* Financial Goals - Most important, shown first */}
+      {/* Financial Goals - Emergency Fund & Financial Freedom */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -304,22 +304,11 @@ function MainPortfolioView({
         />
       </motion.div>
 
-      {/* Current Portfolio Balance - Clean, single section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <ErrorBoundary>
-          <WalletBalanceV2 onTotalChange={setPortfolioTotal} />
-        </ErrorBoundary>
-      </motion.div>
-
       {/* Auto Deposits Management */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25 }}
+        transition={{ delay: 0.2 }}
       >
         <ErrorBoundary>
           <AutoDepositDashboard />
@@ -330,7 +319,7 @@ function MainPortfolioView({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35 }}
+        transition={{ delay: 0.3 }}
         className="text-center"
       >
         <button
@@ -348,11 +337,40 @@ function MainPortfolioView({
         </p>
       </motion.div>
 
+      {/* Hidden component to get portfolio total for goals calculation */}
+      <div className="hidden">
+        <WalletBalanceV2 onTotalChange={setPortfolioTotal} />
+      </div>
+    </div>
+  );
+}
+
+// PORTFOLIO TAB - Portfolio balance, charts, and performance tracking
+function PortfolioTab({
+  showHistoryExpanded,
+  onToggleHistory,
+}: {
+  showHistoryExpanded: boolean;
+  onToggleHistory: () => void;
+}) {
+  return (
+    <div className="space-y-6 md:space-y-8">
+      {/* Current Portfolio Balance */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <ErrorBoundary>
+          <WalletBalanceV2 />
+        </ErrorBoundary>
+      </motion.div>
+
       {/* Portfolio Performance Charts */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45 }}
+        transition={{ delay: 0.2 }}
       >
         <ErrorBoundary>
           <SimplePortfolioChart />
@@ -363,7 +381,7 @@ function MainPortfolioView({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.55 }}
+        transition={{ delay: 0.3 }}
         className="border-t border-gray-200 pt-6"
       >
         <button

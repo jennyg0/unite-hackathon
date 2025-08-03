@@ -10,9 +10,11 @@ import {
   X,
   BookOpen,
   Award,
+  Target,
 } from "lucide-react";
 
 type TabType =
+  | "goals"
   | "portfolio"
   | "history"
   | "learn"
@@ -30,6 +32,7 @@ export function MobileNavigation({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const tabs = [
+    { id: "goals", label: "Goals", icon: Target },
     { id: "portfolio", label: "Portfolio", icon: BarChart3 },
     { id: "learn", label: "Learn", icon: BookOpen },
     { id: "achievements", label: "Achievements", icon: Award },
