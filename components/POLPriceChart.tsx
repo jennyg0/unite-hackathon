@@ -39,13 +39,13 @@ export function POLPriceChart() {
   const [priceChange24h, setPriceChange24h] = useState<number>(0);
   const [error, setError] = useState<string>("");
 
-  const { getTokenPrices } = use1inchData({ chainId: POLYGON_CHAIN_ID });
+  const { fetchTokenPrices, prices } = use1inchData({ chainId: POLYGON_CHAIN_ID });
 
   // Fetch live POL price
   const fetchCurrentPrice = async () => {
     try {
-      const prices = await getTokenPrices([POL_ADDRESS]);
-      const polPrice = prices?.[POL_ADDRESS] || 0;
+      await fetchTokenPrices([POL_ADDRESS]);
+      const polPrice = prices[POL_ADDRESS]?.price || 0;
       setCurrentPrice(polPrice);
     } catch (err) {
       console.error("Failed to fetch POL price:", err);

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 // Backend API configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://your-backend-api.vercel.app';
 
 interface ScheduledDeposit {
   id: string;
@@ -49,7 +49,7 @@ export default function AutoDepositDashboard() {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/scheduled-deposits/${user.wallet.address}`
+        `${API_BASE_URL}/api/scheduled-deposits/${user.wallet.address}`
       );
       const data = await response.json();
 
@@ -72,10 +72,24 @@ export default function AutoDepositDashboard() {
     }
   }, [authenticated, user?.wallet?.address]);
 
+  // Listen for custom events to refresh immediately
+  useEffect(() => {
+    const handleAutoDepositChanged = () => {
+      console.log('Auto deposit changed - refreshing dashboard immediately');
+      fetchSchedules();
+    };
+
+    window.addEventListener('autoDepositChanged', handleAutoDepositChanged);
+
+    return () => {
+      window.removeEventListener('autoDepositChanged', handleAutoDepositChanged);
+    };
+  }, []);
+
   const cancelSchedule = async (scheduleId: string) => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/scheduled-deposits/${scheduleId}`,
+        `${API_BASE_URL}/api/scheduled-deposits/${scheduleId}`,
         {
           method: "DELETE",
           headers: {

@@ -221,7 +221,7 @@ function MilestoneCard({
       {isEarned && milestone.timestamp && (
         <div className="flex items-center space-x-2 text-xs text-gray-500 mb-3">
           <Calendar className="w-3 h-3" />
-          <span>Earned {milestone.timestamp.toLocaleDateString()}</span>
+          <span>Earned {new Date(milestone.timestamp).toLocaleDateString()}</span>
         </div>
       )}
 

@@ -67,7 +67,7 @@ export default function NFTMilestones() {
                       {milestone.description}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">
-                      {milestone.timestamp.toLocaleDateString()}
+                      {new Date(milestone.timestamp).toLocaleDateString()}
                     </p>
                   </div>
                   {milestone.imageUrl && (

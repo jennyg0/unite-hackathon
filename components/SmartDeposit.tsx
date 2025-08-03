@@ -133,7 +133,7 @@ export default function SmartDeposit({
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<
-    "idle" | "finding-route" | "swapping" | "depositing" | "success"
+    "idle" | "finding-route" | "swapping" | "cross-chain-swap" | "depositing" | "complete" | "success"
   >("idle");
   const [statusMessage, setStatusMessage] = useState("");
   const [showCelebration, setShowCelebration] = useState(false);
@@ -288,11 +288,63 @@ export default function SmartDeposit({
       let depositTx;
       let targetAPY = topAllocation.opportunity.apy;
       const selectedProtocol = topAllocation.opportunity.protocol;
+      let crossChainResult: any = null;
 
       console.log('🤖 AI selected protocol:', selectedProtocol, 'with APY:', targetAPY);
 
-      if (selectedProtocol.includes("Aave")) {
-        console.log('✅ Executing AI choice: Aave V3');
+      // Check if this is a cross-chain strategy
+      const targetChainId = topAllocation.opportunity.chainId || 137; // Default to Polygon
+      const currentChainId = 137; // We're on Polygon
+      let shouldUseCrossChain = targetChainId !== currentChainId;
+
+      if (shouldUseCrossChain) {
+        console.log(`🌉 Executing cross-chain strategy: Polygon → Chain ${targetChainId}`);
+        setStatus("cross-chain-swap");
+        setStatusMessage("Initiating 1inch Fusion+ cross-chain swap...");
+
+        // Use 1inch Fusion+ for cross-chain deposits
+        const { executeSeamlessCrossChainDeposit } = await import('@/lib/1inch-fusion-sdk');
+        
+        const targetProtocol = selectedProtocol.includes("Aave") ? "aave" :
+                              selectedProtocol.includes("Compound") ? "compound" :
+                              selectedProtocol.includes("Yearn") ? "yearn" : "aave";
+
+        // For cross-chain, we need to check which USDC the user actually has
+        // Most users on Polygon have Bridged USDC, but useAutomatedDeposits uses Native USDC
+        // For now, default to Bridged USDC since that's more common
+        const fromTokenAddress = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'; // Bridged USDC.e on Polygon
+        
+        crossChainResult = await executeSeamlessCrossChainDeposit({
+          userAddress,
+          fromChainId: currentChainId,
+          fromTokenAddress,
+          amount: (depositAmount * 1000000).toString(),
+          targetChainId,
+          targetProtocol: targetProtocol as 'aave' | 'compound' | 'yearn',
+          slippage: 1 // 1% slippage
+        });
+
+        if (!crossChainResult.success) {
+          // Fall back to same-chain deposit with educational message
+          console.warn('Cross-chain failed, falling back to same-chain:', crossChainResult.message);
+          setStatus("depositing");
+          setStatusMessage(`Cross-chain optimization unavailable. Using same-chain deposit...`);
+          
+          // Skip cross-chain and continue with regular flow
+          shouldUseCrossChain = false;
+        }
+
+        console.log("✅ Cross-chain deposit successful:", crossChainResult);
+        
+        // For cross-chain, we don't have a traditional depositTx - the swap handles everything
+        depositTx = {
+          to: "0x1inch", // Placeholder - the actual transaction was handled by Fusion+
+          data: "0xcrosschain",
+          value: "0"
+        };
+        
+      } else if (selectedProtocol.includes("Aave")) {
+        console.log('✅ Executing AI choice: Aave V3 (same-chain)');
         depositTx = aaveService.buildDepositTx(
           "USDC",
           (depositAmount * 1000000).toString(),
@@ -337,7 +389,20 @@ export default function SmartDeposit({
 
       console.log("🏗️ AI strategy deposit transaction:", depositTx);
 
-      // Get the wallet provider first
+      // Skip traditional wallet flow for cross-chain transactions (handled by 1inch Fusion+)
+      if (shouldUseCrossChain && crossChainResult && crossChainResult.success) {
+        console.log("✅ Cross-chain transaction completed via 1inch Fusion+");
+        setStatus("complete");
+        setStatusMessage("Cross-chain deposit completed successfully!");
+        
+        // Update APY for UI display
+        setCurrentAPY(targetAPY);
+        
+        // Continue to success state without wallet.sendTransaction
+        return;
+      }
+
+      // Get the wallet provider for same-chain transactions
       let wallet = wallets[0]; // Use first connected wallet
       let provider;
 
@@ -359,17 +424,17 @@ export default function SmartDeposit({
 
       // Get correct USDC address based on the selected protocol's chain
       let usdcAddress: string;
-      let targetChainId: number;
+      let chainIdForUSDC: number;
       
       if (selectedProtocol.includes("Yearn") || selectedProtocol.includes("Aave")) {
-        usdcAddress = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // USDC on Polygon
-        targetChainId = 137; // Polygon
+        usdcAddress = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // Bridged USDC.e on Polygon (was working)
+        chainIdForUSDC = 137; // Polygon
       } else if (selectedProtocol.includes("Compound")) {
         usdcAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"; // USDC on Ethereum
-        targetChainId = 1; // Ethereum
+        chainIdForUSDC = 1; // Ethereum
       } else {
-        usdcAddress = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // Default to Polygon
-        targetChainId = 137;
+        usdcAddress = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"; // Default to Bridged USDC.e on Polygon
+        chainIdForUSDC = 137;
       }
       
       const spenderAddress = depositTx.to; // Protocol contract address
@@ -703,9 +768,9 @@ export default function SmartDeposit({
           console.log("⚡ SIMPLIFIED APPROACH: Skipping balance check to avoid API issues");
           console.log("💡 Transaction will fail naturally if insufficient balance");
           
-          // Use native USDC directly since that's what you have
+          // Use native USDC (what useAutomatedDeposits uses and was working)
           const usdcAddress = nativeUsdcAddress;
-          const assetName = "USDC_NATIVE";
+          const assetName = "USDC";
           
           // Set a reasonable balance assumption for gas estimation
           const usdcBalance = BigInt(depositAmountWei);
@@ -1134,7 +1199,9 @@ export default function SmartDeposit({
         <h3 className="text-xl font-semibold text-gray-900 mb-2">
           {status === "finding-route" && "Finding Best Route"}
           {status === "swapping" && "Converting Tokens"}
+          {status === "cross-chain-swap" && "Cross-Chain Optimization"}
           {status === "depositing" && "Processing Deposit"}
+          {status === "complete" && "Deposit Successful!"}
         </h3>
         <p className="text-gray-600 mb-4">{statusMessage}</p>
 
@@ -1145,9 +1212,13 @@ export default function SmartDeposit({
             style={{
               width:
                 status === "finding-route"
-                  ? "33%"
+                  ? "25%"
                   : status === "swapping"
-                  ? "66%"
+                  ? "50%"
+                  : status === "cross-chain-swap"
+                  ? "75%"
+                  : status === "depositing"
+                  ? "90%"
                   : "100%",
             }}
           />

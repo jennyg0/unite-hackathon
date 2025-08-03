@@ -45,7 +45,7 @@ export function OnboardingComplete({ onFinish }: OnboardingCompleteProps) {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="text-4xl font-bold text-gray-900 mb-4"
         >
-          Welcome to Compound!
+          Welcome to BYOB!
         </motion.h1>
 
         <motion.p
@@ -100,19 +100,25 @@ export function OnboardingComplete({ onFinish }: OnboardingCompleteProps) {
               <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                 <span className="text-sm font-bold text-green-600">1</span>
               </div>
-              <p className="text-gray-700">Your money starts earning interest immediately</p>
+              <p className="text-gray-700">
+                Your money starts earning interest immediately
+              </p>
             </div>
             <div className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
               <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                 <span className="text-sm font-bold text-green-600">2</span>
               </div>
-              <p className="text-gray-700">Track your growth on the earnings dashboard</p>
+              <p className="text-gray-700">
+                Track your growth on the earnings dashboard
+              </p>
             </div>
             <div className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
               <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                 <span className="text-sm font-bold text-green-600">3</span>
               </div>
-              <p className="text-gray-700">Watch compound interest work its magic</p>
+              <p className="text-gray-700">
+                Watch compound interest work its magic
+              </p>
             </div>
           </div>
         </motion.div>
