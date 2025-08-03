@@ -7,14 +7,13 @@ import "../contracts/ByobMilestoneNFT.sol";
 
 contract DeployScript is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
+        address deployer = msg.sender;
 
         console.log("==================================================");
-        console.log(" Deploying BYOB Milestone NFT to Gnosis Chain");
+        console.log(" Deploying BYOB Milestone NFT to Polygon Chain");
         console.log("==================================================");
         console.log("Deployer address:", deployer);
-        console.log("Deployer balance:", deployer.balance / 1e18, "xDAI");
+        console.log("Deployer balance:", deployer.balance / 1e18, "MATIC");
         console.log("");
 
         require(
@@ -22,7 +21,7 @@ contract DeployScript is Script {
             "Insufficient balance for deployment"
         );
 
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast();
 
         // Deploy the NFT contract
         console.log(" Deploying ByobMilestoneNFT contract...");
@@ -64,14 +63,11 @@ contract DeployScript is Script {
 
         console.log(" Next Steps:");
         console.log("1. Update milestone-nft.ts with contract address:");
-        console.log("   100: { nft: '%s' as Address },", address(nft));
+        console.log("   137: { nft: '%s' as Address },", address(nft));
         console.log("");
-        console.log("2. Add Gnosis chain import to milestone-nft.ts:");
-        console.log("   import { gnosis } from 'viem/chains';");
-        console.log("");
-        console.log("3. Verify contract on GnosisScan (optional):");
+        console.log("2. Verify contract on PolygonScan (optional):");
         console.log(
-            "   forge verify-contract %s ByobMilestoneNFT --chain gnosis",
+            "   forge verify-contract %s ByobMilestoneNFT --chain polygon",
             address(nft)
         );
         console.log("");

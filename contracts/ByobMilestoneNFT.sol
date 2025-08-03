@@ -4,17 +4,13 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
-
 /**
  * @title BYOB Milestone NFT
  * @dev NFT contract for BYOB achievement milestones
  * Supports 5 milestone types with metadata stored on IPFS
  */
 contract ByobMilestoneNFT is ERC721, ERC721URIStorage, Ownable {
-    using Counters for Counters.Counter;
-    
-    Counters.Counter private _tokenIdCounter;
+    uint256 private _tokenIdCounter;
     
     // Milestone types
     enum MilestoneType {
@@ -48,9 +44,9 @@ contract ByobMilestoneNFT is ERC721, ERC721URIStorage, Ownable {
         uint256 value
     );
     
-    constructor() ERC721("BYOB Milestone NFT", "BYOB-MILE") {
+    constructor() ERC721("BYOB Milestone NFT", "BYOB-MILE") Ownable(msg.sender) {
         // Start token IDs at 1
-        _tokenIdCounter.increment();
+        _tokenIdCounter++;
     }
     
     /**
@@ -60,7 +56,7 @@ contract ByobMilestoneNFT is ERC721, ERC721URIStorage, Ownable {
      * @param value Achievement value (amount saved, module completed, etc.)
      * @param title NFT title
      * @param description NFT description
-     * @param tokenURI Metadata URI (IPFS link)
+     * @param metadataURI Metadata URI (IPFS link)
      */
     function mintMilestone(
         address to,
@@ -68,18 +64,17 @@ contract ByobMilestoneNFT is ERC721, ERC721URIStorage, Ownable {
         uint256 value,
         string memory title,
         string memory description,
-        string memory tokenURI
+        string memory metadataURI
     ) external onlyOwner {
         require(milestoneType <= 4, "Invalid milestone type");
         require(!hasAchieved[to][milestoneType], "Milestone already earned");
         require(to != address(0), "Cannot mint to zero address");
         
-        uint256 tokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
+        uint256 tokenId = ++_tokenIdCounter;
         
         // Mint the NFT
         _safeMint(to, tokenId);
-        _setTokenURI(tokenId, tokenURI);
+        _setTokenURI(tokenId, metadataURI);
         
         // Record achievement
         hasAchieved[to][milestoneType] = true;
@@ -96,39 +91,8 @@ contract ByobMilestoneNFT is ERC721, ERC721URIStorage, Ownable {
         emit MilestoneEarned(to, tokenId, MilestoneType(milestoneType), title, value);
     }
     
-    /**
-     * @dev Batch mint multiple milestones to save gas
-     */
-    function batchMintMilestones(
-        address[] calldata recipients,
-        uint8[] calldata milestoneTypes,
-        uint256[] calldata values,
-        string[] calldata titles,
-        string[] calldata descriptions,
-        string[] calldata tokenURIs
-    ) external onlyOwner {
-        require(recipients.length == milestoneTypes.length, "Array length mismatch");
-        require(recipients.length == values.length, "Array length mismatch");
-        require(recipients.length == titles.length, "Array length mismatch");
-        require(recipients.length == descriptions.length, "Array length mismatch");
-        require(recipients.length == tokenURIs.length, "Array length mismatch");
-        
-        for (uint256 i = 0; i < recipients.length; i++) {
-            if (!hasAchieved[recipients[i]][milestoneTypes[i]] && 
-                milestoneTypes[i] <= 4 && 
-                recipients[i] != address(0)) {
-                
-                mintMilestone(
-                    recipients[i],
-                    milestoneTypes[i],
-                    values[i],
-                    titles[i],
-                    descriptions[i],
-                    tokenURIs[i]
-                );
-            }
-        }
-    }
+    // Batch minting removed due to stack depth limitations
+    // Use individual mintMilestone calls instead
     
     /**
      * @dev Get all milestone NFTs owned by a user
@@ -138,7 +102,7 @@ contract ByobMilestoneNFT is ERC721, ERC721URIStorage, Ownable {
         uint256[] memory tokenIds = new uint256[](balance);
         
         uint256 index = 0;
-        uint256 totalSupply = _tokenIdCounter.current() - 1;
+        uint256 totalSupply = _tokenIdCounter - 1;
         
         for (uint256 tokenId = 1; tokenId <= totalSupply && index < balance; tokenId++) {
             if (ownerOf(tokenId) == user) {
@@ -161,7 +125,7 @@ contract ByobMilestoneNFT is ERC721, ERC721URIStorage, Ownable {
      * @dev Get milestone data for a token
      */
     function getMilestoneData(uint256 tokenId) external view returns (MilestoneData memory) {
-        require(_exists(tokenId), "Token does not exist");
+        require(_ownerOf(tokenId) != address(0), "Token does not exist");
         return milestoneData[tokenId];
     }
     
@@ -169,13 +133,9 @@ contract ByobMilestoneNFT is ERC721, ERC721URIStorage, Ownable {
      * @dev Get total number of milestones minted
      */
     function totalMilestones() external view returns (uint256) {
-        return _tokenIdCounter.current() - 1;
+        return _tokenIdCounter - 1;
     }
     
-    // Override required by Solidity
-    function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
-        super._burn(tokenId);
-    }
     
     function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
         return super.tokenURI(tokenId);
