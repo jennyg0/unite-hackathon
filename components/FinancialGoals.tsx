@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Target, TrendingUp, Shield, DollarSign, Calendar, ArrowRight } from "lucide-react";
+import { Target, TrendingUp, Shield, DollarSign, Calendar, ArrowRight, HelpCircle } from "lucide-react";
 import { useOnboarding } from "./OnboardingProvider";
 import { useWallet } from "@/hooks/useWallet";
 import { FinancialFreedomCalculator } from "./FinancialFreedomCalculator";
@@ -32,14 +32,39 @@ export function FinancialGoals({
   const [freedomGoal, setFreedomGoal] = useState<GoalProgress | null>(null);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showChart, setShowChart] = useState(false);
+  const [showEmergencyTooltip, setShowEmergencyTooltip] = useState(false);
+  const [showFreedomTooltip, setShowFreedomTooltip] = useState(false);
 
   useEffect(() => {
     calculateGoalProgress();
   }, [totalBalance, state.userGoals]);
 
+  // Listen for storage changes to update when financial freedom calculator is used
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key?.startsWith('byob_')) {
+        console.log("📱 localStorage changed, recalculating goals:", e.key);
+        calculateGoalProgress();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   const calculateGoalProgress = () => {
     const currentBalance = totalBalance || 0;
-    const monthlySavings = state.userGoals.monthlySavingsGoal || 500; // Default to $500 if not set
+    
+    // Check localStorage for updated monthly savings from calculator
+    let monthlySavings = state.userGoals.monthlySavingsGoal || 500; // Default to $500 if not set
+    const savedMonthlySavings = localStorage.getItem("byob_monthly_savings");
+    if (savedMonthlySavings) {
+      const parsedSavings = parseFloat(savedMonthlySavings);
+      if (parsedSavings > 0) {
+        monthlySavings = parsedSavings;
+        console.log("💰 Using saved monthly savings:", parsedSavings);
+      }
+    }
     
     // Debug logging to track balance issues
     console.log("🎯 Financial Goals Debug:", {
@@ -49,12 +74,23 @@ export function FinancialGoals({
       userGoals: state.userGoals
     });
 
-    // Use actual monthly expenses if available, otherwise estimate from savings
+    // Use actual monthly expenses: check localStorage first, then stored value, then estimate
     let monthlyExpenses = state.userGoals.monthlyExpenses;
+    
+    // Check localStorage for updated monthly expenses from calculator
+    const savedMonthlyExpenses = localStorage.getItem("byob_monthly_expenses");
+    if (savedMonthlyExpenses) {
+      const parsedExpenses = parseFloat(savedMonthlyExpenses);
+      if (parsedExpenses > 0) {
+        monthlyExpenses = parsedExpenses;
+        console.log("🏠 Using saved monthly expenses:", parsedExpenses);
+      }
+    }
     
     if (!monthlyExpenses || monthlyExpenses <= 0) {
       // Fallback: estimate from savings (savings rate of 20-33%)
       monthlyExpenses = monthlySavings * 3.5; // Conservative estimate: 22% savings rate
+      console.log("🏠 Estimated monthly expenses from savings:", monthlyExpenses);
     }
     
     const emergencyTarget = monthlyExpenses * 6; // 6 months of expenses
@@ -62,23 +98,55 @@ export function FinancialGoals({
     if (emergencyTarget > 0) {
       const emergencyPercentage = Math.min((currentBalance / emergencyTarget) * 100, 100);
       const emergencyRemaining = Math.max(emergencyTarget - currentBalance, 0);
-      const emergencyMonthsRemaining = monthlySavings > 0 ? emergencyRemaining / monthlySavings : 999;
+      
+      // Calculate with compound interest (8% annual return assumption from DeFi yields)
+      const annualReturnRate = 0.08;
+      const monthlyReturnRate = annualReturnRate / 12;
+      let emergencyMonthsRemaining = 0;
+      
+      if (monthlySavings > 0 && emergencyRemaining > 0) {
+        // Use compound interest calculation for emergency fund too
+        let balance = currentBalance;
+        let months = 0;
+        
+        while (balance < emergencyTarget && months < 240) { // Cap at 20 years
+          balance = balance * (1 + monthlyReturnRate) + monthlySavings;
+          months++;
+        }
+        
+        emergencyMonthsRemaining = months;
+      } else if (emergencyRemaining <= 0) {
+        emergencyMonthsRemaining = 0; // Already achieved!
+      } else {
+        emergencyMonthsRemaining = 999; // No savings = never achievable
+      }
       
       setEmergencyGoal({
         current: currentBalance,
         target: emergencyTarget,
         percentage: emergencyPercentage,
-        monthsRemaining: Math.ceil(emergencyMonthsRemaining),
+        monthsRemaining: emergencyMonthsRemaining,
         onTrack: emergencyMonthsRemaining <= 18 // On track if achievable within 1.5 years
       });
     }
 
-    // Financial Freedom Goal: Use stored number or calculate 25x annual expenses (4% rule)
+    // Financial Freedom Goal: Check localStorage first, then stored number, then calculate
     let financialFreedomTarget = state.userGoals.financialFreedomNumber;
+    
+    // Check localStorage for updated financial freedom number
+    const savedFinancialFreedomNumber = localStorage.getItem("byob_financial_freedom_number");
+    if (savedFinancialFreedomNumber) {
+      const parsedNumber = parseFloat(savedFinancialFreedomNumber);
+      if (parsedNumber > 0) {
+        financialFreedomTarget = parsedNumber;
+        console.log("🎯 Using saved financial freedom number:", parsedNumber);
+      }
+    }
     
     if (!financialFreedomTarget || financialFreedomTarget <= 0) {
       // Calculate based on expenses: 25x annual expenses for 4% withdrawal rate
       financialFreedomTarget = monthlyExpenses * 12 * 25;
+      console.log("🎯 Calculated financial freedom number:", financialFreedomTarget);
     }
     
     if (financialFreedomTarget > 0) {
@@ -211,8 +279,30 @@ export function FinancialGoals({
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                 <Shield className="w-5 h-5 text-blue-600" />
               </div>
-              <div>
-                <h4 className="font-semibold text-gray-900">Emergency Fund</h4>
+              <div className="flex-1">
+                <div className="flex items-center space-x-2">
+                  <h4 className="font-semibold text-gray-900">Emergency Fund</h4>
+                  <div 
+                    className="relative"
+                    onMouseEnter={() => setShowEmergencyTooltip(true)}
+                    onMouseLeave={() => setShowEmergencyTooltip(false)}
+                  >
+                    <HelpCircle className="w-4 h-4 text-gray-400 hover:text-blue-600 cursor-help" />
+                    {showEmergencyTooltip && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-50"
+                      >
+                        <div className="bg-gray-900 text-white text-sm rounded-lg p-4 w-72 shadow-xl">
+                          <div className="font-medium mb-2">Emergency Fund</div>
+                          <div className="leading-relaxed">6 months of living expenses set aside for unexpected events like job loss, medical bills, or major repairs. Protects you from going into debt during emergencies.</div>
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-3 h-3 bg-gray-900 rotate-45"></div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
                 <p className="text-sm text-gray-600">6 months of expenses</p>
               </div>
             </div>
@@ -237,24 +327,45 @@ export function FinancialGoals({
               </div>
             </div>
 
-            {/* Time to Goal */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-1 text-sm text-gray-600">
-                <Calendar className="w-4 h-4" />
-                <span>
-                  {emergencyGoal.monthsRemaining > 12 
-                    ? `${Math.round(emergencyGoal.monthsRemaining / 12)} years`
-                    : `${emergencyGoal.monthsRemaining} months`
-                  } to goal
+            {/* Time to Goal & Time Savings */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-1 text-sm text-gray-600">
+                  <Calendar className="w-4 h-4" />
+                  <span>
+                    {emergencyGoal.monthsRemaining > 12 
+                      ? `${Math.round(emergencyGoal.monthsRemaining / 12)} years`
+                      : `${emergencyGoal.monthsRemaining} months`
+                    } to goal
+                  </span>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  emergencyGoal.onTrack 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {emergencyGoal.onTrack ? 'On Track' : 'Behind'}
                 </span>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                emergencyGoal.onTrack 
-                  ? 'bg-green-100 text-green-700' 
-                  : 'bg-yellow-100 text-yellow-700'
-              }`}>
-                {emergencyGoal.onTrack ? 'On Track' : 'Behind'}
-              </span>
+              
+              {(() => {
+                const monthlySavings = state.userGoals.monthlySavingsGoal || 500;
+                const traditionalMonths = calculateTraditionalMonths(emergencyGoal.current, emergencyGoal.target, monthlySavings);
+                const yearsSaved = (traditionalMonths - emergencyGoal.monthsRemaining) / 12;
+                
+                return yearsSaved > 0.1 ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-green-800">
+                        <span className="font-semibold">⚡ {yearsSaved.toFixed(1)} years faster</span> than banks
+                      </div>
+                      <div className="text-xs text-green-600">
+                        8% vs 0.5% APY
+                      </div>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
             </div>
           </motion.div>
         )}
@@ -271,8 +382,30 @@ export function FinancialGoals({
               <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-purple-600" />
               </div>
-              <div>
-                <h4 className="font-semibold text-gray-900">Financial Freedom</h4>
+              <div className="flex-1">
+                <div className="flex items-center space-x-2">
+                  <h4 className="font-semibold text-gray-900">Financial Freedom</h4>
+                  <div 
+                    className="relative"
+                    onMouseEnter={() => setShowFreedomTooltip(true)}
+                    onMouseLeave={() => setShowFreedomTooltip(false)}
+                  >
+                    <HelpCircle className="w-4 h-4 text-gray-400 hover:text-purple-600 cursor-help" />
+                    {showFreedomTooltip && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 z-50"
+                      >
+                        <div className="bg-gray-900 text-white text-sm rounded-lg p-4 w-72 shadow-xl">
+                          <div className="font-medium mb-2">Financial Freedom</div>
+                          <div className="leading-relaxed">Having enough invested money (usually 25x your yearly expenses) to live off investment returns alone. Based on the 4% withdrawal rule - work becomes optional!</div>
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-3 h-3 bg-gray-900 rotate-45"></div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
                 <p className="text-sm text-gray-600">Work becomes optional</p>
               </div>
             </div>
@@ -297,24 +430,45 @@ export function FinancialGoals({
               </div>
             </div>
 
-            {/* Time to Goal */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-1 text-sm text-gray-600">
-                <Calendar className="w-4 h-4" />
-                <span>
-                  {freedomGoal.monthsRemaining > 12 
-                    ? `${Math.round(freedomGoal.monthsRemaining / 12)} years`
-                    : `${freedomGoal.monthsRemaining} months`
-                  } to goal
+            {/* Time to Goal & Time Savings */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-1 text-sm text-gray-600">
+                  <Calendar className="w-4 h-4" />
+                  <span>
+                    {freedomGoal.monthsRemaining > 12 
+                      ? `${Math.round(freedomGoal.monthsRemaining / 12)} years`
+                      : `${freedomGoal.monthsRemaining} months`
+                    } to goal
+                  </span>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  freedomGoal.onTrack 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {freedomGoal.onTrack ? 'On Track' : 'Adjust Plan'}
                 </span>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                freedomGoal.onTrack 
-                  ? 'bg-green-100 text-green-700' 
-                  : 'bg-yellow-100 text-yellow-700'
-              }`}>
-                {freedomGoal.onTrack ? 'On Track' : 'Adjust Plan'}
-              </span>
+              
+              {(() => {
+                const monthlySavings = state.userGoals.monthlySavingsGoal || 500;
+                const traditionalMonths = calculateTraditionalMonths(freedomGoal.current, freedomGoal.target, monthlySavings);
+                const yearsSaved = (traditionalMonths - freedomGoal.monthsRemaining) / 12;
+                
+                return yearsSaved > 0.1 ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-green-800">
+                        <span className="font-semibold">⚡ {yearsSaved.toFixed(1)} years faster</span> than banks
+                      </div>
+                      <div className="text-xs text-green-600">
+                        8% vs 0.5% APY
+                      </div>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
             </div>
           </motion.div>
         )}

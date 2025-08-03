@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Calculator, Target, TrendingUp, DollarSign } from "lucide-react";
 
@@ -21,6 +21,44 @@ export function FinancialFreedomCalculator() {
   const [currentSavings, setCurrentSavings] = useState("");
   const [monthlySavings, setMonthlySavings] = useState("");
   const [result, setResult] = useState<CalculatorResult | null>(null);
+
+  // Load saved values from localStorage on mount
+  useEffect(() => {
+    const savedExpenses = localStorage.getItem("byob_monthly_expenses");
+    const savedCurrentSavings = localStorage.getItem("byob_current_savings");
+    const savedMonthlySavings = localStorage.getItem("byob_monthly_savings");
+    const savedResult = localStorage.getItem("byob_financial_freedom_result");
+
+    if (savedExpenses) setMonthlyExpenses(savedExpenses);
+    if (savedCurrentSavings) setCurrentSavings(savedCurrentSavings);
+    if (savedMonthlySavings) setMonthlySavings(savedMonthlySavings);
+    if (savedResult) {
+      try {
+        setResult(JSON.parse(savedResult));
+      } catch (err) {
+        console.error("Failed to parse saved result:", err);
+      }
+    }
+  }, []);
+
+  // Save values to localStorage whenever they change
+  useEffect(() => {
+    if (monthlyExpenses) {
+      localStorage.setItem("byob_monthly_expenses", monthlyExpenses);
+    }
+  }, [monthlyExpenses]);
+
+  useEffect(() => {
+    if (currentSavings) {
+      localStorage.setItem("byob_current_savings", currentSavings);
+    }
+  }, [currentSavings]);
+
+  useEffect(() => {
+    if (monthlySavings) {
+      localStorage.setItem("byob_monthly_savings", monthlySavings);
+    }
+  }, [monthlySavings]);
 
   const calculateFinancialFreedom = () => {
     const monthly = parseFloat(monthlyExpenses) || 0;
@@ -116,7 +154,7 @@ export function FinancialFreedomCalculator() {
       bankAPY
     );
 
-    setResult({
+    const calculatedResult = {
       yearlyExpenses,
       financialFreedomNumber,
       defiYears: Math.max(0, defiYears),
@@ -126,11 +164,25 @@ export function FinancialFreedomCalculator() {
       defiCompoundInterest: defiResults.compoundInterest,
       bankTotalSaved: bankResults.totalSaved,
       bankCompoundInterest: bankResults.compoundInterest,
+    };
+
+    setResult(calculatedResult);
+
+    // Save result to localStorage
+    localStorage.setItem("byob_financial_freedom_result", JSON.stringify(calculatedResult));
+    
+    // Also save the financial freedom number separately for easy access by other components
+    localStorage.setItem("byob_financial_freedom_number", financialFreedomNumber.toString());
+    
+    console.log("💾 Saved financial freedom calculation:", {
+      financialFreedomNumber,
+      yearlyExpenses,
+      monthlyExpenses: monthly
     });
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6">
+    <div className="max-w-6xl mx-auto p-4 md:p-6">
       <div className="text-center mb-6 md:mb-8">
         <div className="w-12 h-12 md:w-16 md:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
           <Calculator className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
@@ -241,7 +293,7 @@ export function FinancialFreedomCalculator() {
               </div>
 
               {/* DeFi vs Bank Comparison */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 {/* DeFi Results */}
                 <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
                   <div className="flex items-center space-x-2 mb-3">
@@ -266,16 +318,20 @@ export function FinancialFreedomCalculator() {
                         <span className="text-sm text-green-700">
                           Total Saved:
                         </span>
-                        <span className="font-semibold text-green-900">
-                          ${result.defiTotalSaved.toLocaleString()}
+                        <span className="font-semibold text-green-900 text-right">
+                          ${result.defiTotalSaved > 1000000 
+                            ? `${(result.defiTotalSaved / 1000000).toFixed(1)}M`
+                            : result.defiTotalSaved.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-green-700">
                           Compound Interest:
                         </span>
-                        <span className="font-semibold text-green-900">
-                          ${result.defiCompoundInterest.toLocaleString()}
+                        <span className="font-semibold text-green-900 text-right">
+                          ${result.defiCompoundInterest > 1000000 
+                            ? `${(result.defiCompoundInterest / 1000000).toFixed(1)}M`
+                            : result.defiCompoundInterest.toLocaleString()}
                         </span>
                       </div>
                     </div>
@@ -306,16 +362,20 @@ export function FinancialFreedomCalculator() {
                         <span className="text-sm text-gray-600">
                           Total Saved:
                         </span>
-                        <span className="font-semibold text-gray-700">
-                          ${result.bankTotalSaved.toLocaleString()}
+                        <span className="font-semibold text-gray-700 text-right">
+                          ${result.bankTotalSaved > 1000000 
+                            ? `${(result.bankTotalSaved / 1000000).toFixed(1)}M`
+                            : result.bankTotalSaved.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">
                           Compound Interest:
                         </span>
-                        <span className="font-semibold text-gray-700">
-                          ${result.bankCompoundInterest.toLocaleString()}
+                        <span className="font-semibold text-gray-700 text-right">
+                          ${result.bankCompoundInterest > 1000000 
+                            ? `${(result.bankCompoundInterest / 1000000).toFixed(1)}M`
+                            : result.bankCompoundInterest.toLocaleString()}
                         </span>
                       </div>
                     </div>

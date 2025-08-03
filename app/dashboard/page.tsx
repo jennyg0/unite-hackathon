@@ -35,6 +35,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import EducationCenter from "@/components/EducationCenter";
 import MilestoneNFTDisplay from "@/components/MilestoneNFTDisplay";
 import AutoDepositDashboard from "@/components/AutoDepositDashboard";
+import { POLPriceChart } from "@/components/POLPriceChart";
 
 type TabType = "goals" | "portfolio" | "history" | "learn" | "achievements";
 
@@ -374,6 +375,17 @@ function PortfolioTab({
       >
         <ErrorBoundary>
           <SimplePortfolioChart />
+        </ErrorBoundary>
+      </motion.div>
+
+      {/* POL Price Chart - Showcasing 1inch Charts API */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+      >
+        <ErrorBoundary>
+          <POLPriceChart />
         </ErrorBoundary>
       </motion.div>
 
