@@ -7,6 +7,9 @@
 .yarn/install-state.gz
 lib/openzeppelin-contracts
 cache/
+broadcast/
+cron/node_modules/
+api/node_modules/
 
 # testing
 /coverage

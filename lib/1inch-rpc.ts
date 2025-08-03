@@ -225,3 +225,8 @@ export function formatBalance(balance: string, decimals: number = 18): string {
 export function parseAmount(amount: string, decimals: number = 18): string {
   return ethers.parseUnits(amount, decimals).toString();
 }
+
+// Helper to get 1inch RPC URL for viem http transport
+export function get1inchRPCUrl(chainId: number = 1): string {
+  return `${ONEINCH_RPC_URL}${chainId}`;
+}
