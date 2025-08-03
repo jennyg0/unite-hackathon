@@ -923,6 +923,9 @@ export default function SmartDeposit({
 
       setStatus("success");
       
+      // Track first deposit milestone 
+      await trackDeposit(parseFloat(amount));
+      
       // Create success message with milestone notification if earned
       let successMessage = depositType === "one-time"
         ? `Successfully deposited $${amount}! Your money is now earning ${currentAPY.toFixed(1)}% APY via Aave.`

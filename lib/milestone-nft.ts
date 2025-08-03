@@ -433,15 +433,16 @@ export class MilestoneSDK {
 
   // Helper to get milestone type from name
   private getMilestoneTypeFromName(name: string): MilestoneType {
-    if (name.includes('First Deposit')) return MilestoneType.FIRST_DEPOSIT;
-    if (name.includes('Streak')) return MilestoneType.SAVINGS_STREAK;
-    if (name.includes('Saved')) return MilestoneType.AMOUNT_SAVED;
+    if (name.includes('First Deposit') || name.includes('First Steps')) return MilestoneType.FIRST_DEPOSIT;
+    if (name.includes('Auto Saver') || name.includes('Streak')) return MilestoneType.SAVINGS_STREAK;
+    if (name.includes('Saved') || name.includes('Savings Champion')) return MilestoneType.AMOUNT_SAVED;
     if (name.includes('Freedom')) return MilestoneType.FINANCIAL_FREEDOM;
-    if (name.includes('Education')) return MilestoneType.EDUCATION_COMPLETE;
+    if (name.includes('Education') || name.includes('Learning') || name.includes('Scholar')) return MilestoneType.EDUCATION_COMPLETE;
     if (name.includes('Referral')) return MilestoneType.REFERRAL_CHAMPION;
-    if (name.includes('Early')) return MilestoneType.EARLY_ADOPTER;
+    if (name.includes('Early') || name.includes('Pioneer')) return MilestoneType.EARLY_ADOPTER;
     if (name.includes('Whale')) return MilestoneType.WHALE_SAVER;
     if (name.includes('ENS') || name.includes('Identity')) return MilestoneType.ENS_IDENTITY;
+    console.warn('⚠️ Unknown NFT name pattern:', name, 'defaulting to FIRST_DEPOSIT');
     return MilestoneType.FIRST_DEPOSIT;
   }
 
