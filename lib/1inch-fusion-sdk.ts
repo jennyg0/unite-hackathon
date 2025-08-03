@@ -100,24 +100,22 @@ class OneInchFusionSDK {
     this.apiKey = apiKey;
     this.isAvailable = !!SDK;
     
-    if (this.isAvailable) {
-      // Check if we're in browser environment
-      const isBrowser = typeof window !== 'undefined';
-      
-      if (isBrowser) {
-        // In browser, we'll use our proxy instead of direct SDK calls
-        console.log('✅ OneInchFusionSDK initialized with proxy mode for browser');
-        this.sdk = null; // We'll use proxy instead
-      } else {
-        // On server, use SDK directly
-        this.sdk = new SDK({
-          url: "https://api.1inch.dev/fusion-plus",
-          authKey: apiKey,
-        });
-        console.log('✅ OneInchFusionSDK initialized with direct SDK for server');
-      }
+    // Check if we're in browser environment
+    const isBrowser = typeof window !== 'undefined';
+    
+    if (isBrowser) {
+      // In browser, we'll use our proxy instead of direct SDK calls
+      console.log('✅ OneInchFusionSDK initialized with proxy mode for browser');
+      this.sdk = null; // We'll use proxy instead
+    } else if (this.isAvailable && apiKey !== 'browser-mode') {
+      // On server with valid API key, use SDK directly
+      this.sdk = new SDK({
+        url: "https://api.1inch.dev/fusion-plus",
+        authKey: apiKey,
+      });
+      console.log('✅ OneInchFusionSDK initialized with direct SDK for server');
     } else {
-      console.warn('⚠️ 1inch SDK not available, operating in fallback mode');
+      console.warn('⚠️ 1inch SDK not available or in browser mode, operating in fallback mode');
       this.sdk = null;
     }
   }
@@ -140,8 +138,18 @@ class OneInchFusionSDK {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`API request failed: ${errorData.error || response.statusText}`);
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = await response.text();
+        }
+        console.error('🚨 Fusion+ API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(`API request failed: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
       }
 
       return await response.json();
@@ -255,8 +263,21 @@ class OneInchFusionSDK {
         queryParams.append('slippage', params.slippage.toString());
       }
 
-      // Use the correct Fusion+ endpoint structure
+      // Try different Fusion+ quote endpoints
       const endpoint = `/quoter/v1.0/quote?${queryParams.toString()}`;
+      
+      console.log('🔍 Fusion+ API request details:', {
+        endpoint,
+        params: {
+          fromChainId: params.fromChainId,
+          toChainId: params.toChainId,
+          fromTokenAddress: params.fromTokenAddress,
+          toTokenAddress: params.toTokenAddress,
+          amount: params.amount,
+          walletAddress: params.walletAddress
+        }
+      });
+      
       const apiResponse = await this.makeApiRequest(endpoint);
       
       if (!apiResponse) {
@@ -330,7 +351,12 @@ class OneInchFusionSDK {
    * Check if a cross-chain route is supported
    */
   isRouteSupported(fromChainId: number, toChainId: number): boolean {
-    return !!(CHAIN_ID_TO_NETWORK[fromChainId] && CHAIN_ID_TO_NETWORK[toChainId]);
+    const supported = !!(CHAIN_ID_TO_NETWORK[fromChainId] && CHAIN_ID_TO_NETWORK[toChainId]);
+    console.log(`🔍 Route support check: ${fromChainId} → ${toChainId} = ${supported}`, {
+      fromNetwork: CHAIN_ID_TO_NETWORK[fromChainId],
+      toNetwork: CHAIN_ID_TO_NETWORK[toChainId]
+    });
+    return supported;
   }
 
   /**
@@ -692,11 +718,21 @@ let fusionSDK: OneInchFusionSDK | null = null;
 
 export function getOneInchFusionSDK(): OneInchFusionSDK {
   if (!fusionSDK) {
-    const apiKey = process.env.ONEINCH_API_KEY;
-    if (!apiKey) {
-      throw new Error('1inch API key not found. Please set ONEINCH_API_KEY');
+    // In browser, we don't have access to server-side env vars
+    // The SDK will use API proxies instead of direct API calls
+    const isBrowser = typeof window !== 'undefined';
+    
+    if (isBrowser) {
+      // In browser, create SDK without API key (will use proxy routes)
+      fusionSDK = new OneInchFusionSDK('browser-mode');
+    } else {
+      // On server, use actual API key
+      const apiKey = process.env.ONEINCH_API_KEY;
+      if (!apiKey) {
+        throw new Error('1inch API key not found. Please set ONEINCH_API_KEY');
+      }
+      fusionSDK = new OneInchFusionSDK(apiKey);
     }
-    fusionSDK = new OneInchFusionSDK(apiKey);
   }
   return fusionSDK;
 }

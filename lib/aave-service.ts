@@ -78,13 +78,8 @@ const STABLECOIN_MARKETS: Record<number, Record<string, {
 }>> = {
   137: { // Polygon
     USDC: {
-      address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', // Bridged USDC.e
-      aTokenAddress: '0x625E7708f30cA75bfd92586e17077590C60eb4cD',
-      decimals: 6,
-    },
-    'USDC_NATIVE': {
-      address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', // Native USDC  
-      aTokenAddress: '0xA4D94019934D8333Ef880ABFFbF2FDd611C762BD', // aUSDC for native USDC
+      address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', // Native USDC (matches useAutomatedDeposits)
+      aTokenAddress: '0xA4D94019934D8333Ef880ABFFbF2FDd611C762BD',
       decimals: 6,
     },
     USDT: {
@@ -627,15 +622,7 @@ export class AaveService {
       throw new Error(`Aave not supported on chain ${this.chainId}`);
     }
 
-    let tokenConfig = STABLECOIN_MARKETS[this.chainId]?.[asset];
-    
-    // If a specific token address is provided, try to find matching config or use native USDC
-    if (tokenAddress) {
-      const nativeUsdcAddress = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359';
-      if (tokenAddress.toLowerCase() === nativeUsdcAddress.toLowerCase()) {
-        tokenConfig = STABLECOIN_MARKETS[this.chainId]?.['USDC_NATIVE'];
-      }
-    }
+    const tokenConfig = STABLECOIN_MARKETS[this.chainId]?.[asset];
     
     if (!tokenConfig) {
       throw new Error(`Token ${asset} not supported on chain ${this.chainId}`);
