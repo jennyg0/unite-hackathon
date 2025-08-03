@@ -7,7 +7,7 @@ import {
 } from '@/lib/constants';
 
 // Backend API configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://your-backend-api.vercel.app';
 
 // Simplified auto deposit contract address
 const SIMPLE_AUTO_DEPOSIT_ADDRESS = '0x93CCA0c23c52E59a4aDA7694F1D7eaEf2cF89C13';
@@ -103,12 +103,12 @@ export function useAutomatedDeposits() {
     setState(prev => ({ ...prev, error: null }));
 
     try {
-      console.log('🤖 Setting up simplified auto deposit with backend API...');
+      console.log('🤖 Setting up automated deposits...');
       
       const userAddress = user.wallet.address;
       const usdcAddress = '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359'; // Native USDC on Polygon
       
-      // First: Get user approval for the simplified contract
+      // First: Get user approval for the contract
       const wallet = wallets[0];
       if (!wallet) {
         throw new Error('No wallet connected');
@@ -121,7 +121,7 @@ export function useAutomatedDeposits() {
       
       console.log('🔐 Requesting USDC approval for auto deposits...');
       
-      // Build approval transaction for the simplified contract
+      // Build approval transaction
       const approvalData = `0x095ea7b3${SIMPLE_AUTO_DEPOSIT_ADDRESS
         .slice(2)
         .padStart(64, "0")}${(amountWei * BigInt(365)) // Approve enough for a year
@@ -190,7 +190,7 @@ export function useAutomatedDeposits() {
       console.log('📡 Scheduling with backend API...');
       
       // Schedule with backend API
-      const response = await fetch(`${API_BASE_URL}/schedule-auto-deposit`, {
+      const response = await fetch(`${API_BASE_URL}/api/schedule-auto-deposit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -237,8 +237,13 @@ export function useAutomatedDeposits() {
         nextDeposit,
         error: null,
       }));
+
+      // Dispatch custom event to notify other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('autoDepositChanged'));
+      }
       
-      console.log('✅ Simplified auto deposit setup complete!', {
+      console.log('✅ Auto deposit setup complete!', {
         scheduleId: apiResult.scheduleId,
         nextDeposit: nextDeposit.toISOString(),
         approvalTx: approvalTxHash
@@ -275,7 +280,7 @@ export function useAutomatedDeposits() {
       }
       
       // Call backend API to cancel the schedule
-      const response = await fetch(`${API_BASE_URL}/scheduled-deposits/${scheduleId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/scheduled-deposits/${scheduleId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -301,6 +306,11 @@ export function useAutomatedDeposits() {
       
       // Clear localStorage
       localStorage.removeItem(`deposits-${user.id}`);
+      
+      // Dispatch custom event to notify other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('autoDepositChanged'));
+      }
       
     } catch (error) {
       console.error('❌ Failed to disable automated deposits:', error);
